@@ -59,14 +59,14 @@ class OrderQueue(ABC):
     def __iter__(self) -> Iterator[Order]: ...
 
     def _higher_priority(self, order1: Order, order2: Order) -> bool:
-        if order1.price_bps is None or order2.price_bps is None:
+        if order1.price_ticks is None or order2.price_ticks is None:
             raise ValueError("Resting orders must have a price")
 
         # Attempt to compare on price
-        if order1.price_bps != order2.price_bps:
+        if order1.price_ticks != order2.price_ticks:
             if self.side is Side.BUY:
-                return order1.price_bps > order2.price_bps
-            return order1.price_bps < order2.price_bps
+                return order1.price_ticks > order2.price_ticks
+            return order1.price_ticks < order2.price_ticks
 
         # Cannot compare on price, fallback to time
         return order1.sequence < order2.sequence
@@ -166,7 +166,7 @@ class HeapOrderQueue(OrderQueue):
     def add(self, order: Order) -> None:
         if order.order_id in self._indices:
             raise ValueError("Order ID already exists")
-        if order.price_bps is None:
+        if order.price_ticks is None:
             raise ValueError("Resting orders must have a price")
         if not order.is_active:
             raise ValueError("Resting orders must be active")
@@ -207,3 +207,15 @@ class HeapOrderQueue(OrderQueue):
 
     def __iter__(self) -> Iterator[Order]:
         return iter(self._contents)
+
+    def sorted_list(self) -> list[Order]:
+        """Returns a list of orders sorted by priority decreasing."""
+
+        def priority(order: Order) -> tuple[int, int]:
+            if order.price_ticks is None:
+                raise RuntimeError("Resting order must have a price")
+
+            price = -order.price_ticks if self.side is Side.BUY else order.price_ticks
+            return price, order.sequence
+
+        return sorted(self._contents, key=priority)
