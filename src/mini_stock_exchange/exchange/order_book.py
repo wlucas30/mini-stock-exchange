@@ -1,4 +1,4 @@
-from .models import Instrument, Order, Price
+from .models import Instrument, Order, OrderId, Price
 from .order_queue import HeapOrderQueue, Side
 
 
@@ -27,3 +27,23 @@ class OrderBook:
     def best_ask_price(self) -> Price | None:
         order = self.best_ask
         return order.price_bps if order is not None else None
+
+    def add_order(self, order: Order) -> None:
+        """Adds an order to the relevant queue."""
+        side = order.side
+        queue = self._bids if side is Side.BUY else self._asks
+        queue.add(order)
+
+    def pop_best(self, side: Side) -> Order | None:
+        """Removes and returns the order with highest priority from the given side."""
+        queue = self._bids if side is Side.BUY else self._asks
+        return queue.pop()
+
+    def cancel_order(self, order_id: OrderId, side: Side) -> Order | None:
+        """Cancels and removes an order from the relevant queue."""
+        queue = self._bids if side is Side.BUY else self._asks
+        return queue.cancel(order_id)
+
+    def asks_by_priority(self) -> list[Order]:
+        """Returns a list of asks ordered by priority decreasing."""
+        return self._asks.sorted_list()

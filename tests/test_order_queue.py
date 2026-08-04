@@ -14,6 +14,7 @@ def make_order(
     order_id: int,
     price: int | None,
     sequence: int,
+    side: Side = Side.BUY,
     status: OrderStatus = OrderStatus.OPEN,
 ) -> Order:
     return Order(
@@ -21,6 +22,7 @@ def make_order(
         sequence=sequence,
         participant_id=f"participant-{order_id}",
         symbol="AAPL",
+        side=side,
         order_type=OrderType.LIMIT,
         original_quantity=10,
         remaining_quantity=10,
@@ -50,9 +52,9 @@ def test_empty_queue() -> None:
 def test_pop_uses_price_time_priority(side: Side, prices: list[int]) -> None:
     queue = HeapOrderQueue(side)
     orders = [
-        make_order(1, price=102, sequence=1),
-        make_order(2, price=101, sequence=2),
-        make_order(3, price=103, sequence=3),
+        make_order(1, price=102, sequence=1, side=side),
+        make_order(2, price=101, sequence=2, side=side),
+        make_order(3, price=103, sequence=3, side=side),
     ]
     for order in orders:
         queue.add(order)
@@ -116,3 +118,21 @@ def test_duplicate_order_id_is_rejected() -> None:
 
     with pytest.raises(ValueError, match="Order ID already exists"):
         queue.add(make_order(1, price=101, sequence=2))
+
+
+def test_sorted_list_returns_priority_order_without_mutating_queue() -> None:
+    queue = HeapOrderQueue(Side.SELL)
+    orders = [
+        make_order(1, price=102, sequence=1, side=Side.SELL),
+        make_order(2, price=100, sequence=2, side=Side.SELL),
+        make_order(3, price=100, sequence=1, side=Side.SELL),
+    ]
+    for order in orders:
+        queue.add(order)
+
+    result = queue.sorted_list()
+
+    assert [order.order_id for order in result] == [3, 2, 1]
+    assert len(queue) == 3
+    assert queue.peek() is orders[2]
+    assert all(queue.get(order.order_id) is order for order in orders)

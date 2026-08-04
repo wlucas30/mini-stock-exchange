@@ -207,3 +207,15 @@ class HeapOrderQueue(OrderQueue):
 
     def __iter__(self) -> Iterator[Order]:
         return iter(self._contents)
+
+    def sorted_list(self) -> list[Order]:
+        """Returns a list of orders sorted by priority decreasing."""
+
+        def priority(order: Order) -> tuple[int, int]:
+            if order.price_bps is None:
+                raise RuntimeError("Resting order must have a price")
+
+            price = -order.price_bps if self.side is Side.BUY else order.price_bps
+            return price, order.sequence
+
+        return sorted(self._contents, key=priority)
