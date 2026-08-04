@@ -64,6 +64,7 @@ class Order:
         participant_id (ParticipantId): The identifier of the participant that
             placed the order.
         symbol (Symbol): The string identifier of the instrument being ordered.
+        side (Side): The side of the order.
         order_type (OrderType): Specifies whether this is a limit or market order.
         original_quantity (int): The quantity this order was placed at.
         remaining_quantity (int): Unfilled quantity remaining.
@@ -77,6 +78,7 @@ class Order:
     sequence: Sequence
     participant_id: ParticipantId
     symbol: Symbol
+    side: Side
     order_type: OrderType
     original_quantity: Quantity
     remaining_quantity: Quantity
@@ -139,6 +141,7 @@ class RequestForOrder:
         participant_id (ParticipantId): The identifier of the participant placing
             the order.
         symbol (Symbol): The string identifier of the instrument being ordered.
+        side (Side): The side of the order.
         order_type (OrderType): Specifies whether this is a limit or market order.
         original_quantity (int): The quantity this order is to be placed at.
         price_bps (Price): For limit orders, the price the order is to be placed at
@@ -149,6 +152,7 @@ class RequestForOrder:
     sequence: Sequence
     participant_id: ParticipantId
     symbol: Symbol
+    side: Side
     order_type: OrderType
     original_quantity: Quantity
     price_bps: Price | None
