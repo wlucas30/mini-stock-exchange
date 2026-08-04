@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from decimal import Decimal
 from enum import Enum, auto
 
@@ -7,6 +7,7 @@ type TradeId = int
 type ParticipantId = str
 type Symbol = str
 type Price = int
+type Cash = int  # 1 = $0.01
 type Quantity = int
 type Timestamp = int
 type Sequence = int
@@ -187,7 +188,27 @@ class Trade:
     timestamp: Timestamp
 
 
-@dataclass(frozen=True)
+@dataclass
 class Participant:
     participant_id: ParticipantId
     display_name: str
+
+    balance: Cash = field(
+        default=10_000_00,  # $10,000
+        repr=False,
+    )
+    positions: dict[Symbol, Quantity] = field(
+        default_factory=dict[Symbol, Quantity],
+        repr=False,
+    )
+
+    reserved_balance: Cash = field(
+            default=0,
+            init=False,
+            repr=False,
+        )
+    reserved_positions: dict[Symbol, Quantity] = field(
+        default_factory=dict[Symbol, Quantity],
+        init=False,
+        repr=False,
+    )
