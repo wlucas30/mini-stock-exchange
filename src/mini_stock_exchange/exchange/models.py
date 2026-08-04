@@ -137,7 +137,6 @@ class RequestForOrder:
     The exchange assigns order ID and timestamp.
 
     Attributes:
-        sequence (Sequence): The request's sequence number.
         participant_id (ParticipantId): The identifier of the participant placing
             the order.
         symbol (Symbol): The string identifier of the instrument being ordered.
@@ -149,7 +148,6 @@ class RequestForOrder:
 
     """
 
-    sequence: Sequence
     participant_id: ParticipantId
     symbol: Symbol
     side: Side
@@ -203,16 +201,5 @@ class Participant:
     )
     positions: dict[Symbol, Quantity] = field(
         default_factory=dict[Symbol, Quantity],
-        repr=False,
-    )
-
-    reserved_balance: Cash = field(
-            default=0,
-            init=False,
-            repr=False,
-        )
-    reserved_positions: dict[Symbol, Quantity] = field(
-        default_factory=dict[Symbol, Quantity],
-        init=False,
         repr=False,
     )
