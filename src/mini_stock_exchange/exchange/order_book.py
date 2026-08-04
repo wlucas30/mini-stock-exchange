@@ -1,4 +1,4 @@
-from .models import Instrument, Order, OrderId, Price
+from .models import Instrument, Order, OrderId, PriceTicks
 from .order_queue import HeapOrderQueue, Side
 
 
@@ -19,14 +19,14 @@ class OrderBook:
         return self._asks.peek()
 
     @property
-    def best_bid_price(self) -> Price | None:
+    def best_bid_price_ticks(self) -> PriceTicks | None:
         order = self.best_bid
-        return order.price_bps if order is not None else None
+        return order.price_ticks if order is not None else None
 
     @property
-    def best_ask_price(self) -> Price | None:
+    def best_ask_price_ticks(self) -> PriceTicks | None:
         order = self.best_ask
-        return order.price_bps if order is not None else None
+        return order.price_ticks if order is not None else None
 
     def add_order(self, order: Order) -> None:
         """Adds an order to the relevant queue."""

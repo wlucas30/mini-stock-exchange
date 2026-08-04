@@ -66,10 +66,10 @@ class Exchange:
         required_cash: Cash = 0
 
         for order in book.asks_by_priority():
-            assert order.price_bps is not None
+            assert order.price_ticks is not None
 
             fill_quantity = min(remaining, order.remaining_quantity)
-            required_cash += fill_quantity * order.price_bps
+            required_cash += fill_quantity * order.price_ticks
             remaining -= fill_quantity
 
             if remaining == 0:
@@ -81,9 +81,9 @@ class Exchange:
         if order.order_type is OrderType.MARKET:
             return self._get_market_buy_cost(order.symbol, order.original_quantity)
 
-        if order.price_bps is None:
+        if order.price_ticks is None:
             raise RuntimeError("Limit buy order must have a price")
-        return order.original_quantity * order.price_bps
+        return order.original_quantity * order.price_ticks
 
     def _validate_order_request(self, request: RequestForOrder) -> None:
         """Ensure the given request is valid and the participant can fund it."""
@@ -95,7 +95,7 @@ class Exchange:
             raise ValueError(f"Symbol {request.symbol} does not exist")
 
         if request.order_type == OrderType.LIMIT and (
-            request.price_bps is None or request.price_bps <= 0
+            request.price_ticks is None or request.price_ticks <= 0
         ):
             raise ValueError("Limit orders must have a positive price")
 
@@ -105,8 +105,8 @@ class Exchange:
         participant = self._participants[request.participant_id]
         if request.side is Side.BUY:
             if request.order_type == OrderType.LIMIT:
-                assert request.price_bps is not None
-                required_cash = request.original_quantity * request.price_bps
+                assert request.price_ticks is not None
+                required_cash = request.original_quantity * request.price_ticks
             else:
                 required_cash = self._get_market_buy_cost(
                     request.symbol, request.original_quantity
@@ -164,13 +164,15 @@ class Exchange:
 
         # Logically, the two orders must have a price as they're now ruled out from
         # being market orders
-        assert incoming.price_bps is not None
-        assert resting.price_bps is not None
+        assert incoming.price_ticks is not None
+        assert resting.price_ticks is not None
 
-        if incoming.side is Side.BUY and incoming.price_bps >= resting.price_bps:
+        if incoming.side is Side.BUY and incoming.price_ticks >= resting.price_ticks:
             return True
 
-        return incoming.side is Side.SELL and incoming.price_bps <= resting.price_bps
+        return (
+            incoming.side is Side.SELL and incoming.price_ticks <= resting.price_ticks
+        )
 
     def _execute_trade(self, incoming: Order, resting: Order) -> Trade:
         """Executes a trade by matching two crossing orders."""
@@ -179,7 +181,7 @@ class Exchange:
             resting.remaining_quantity,
         )
 
-        if resting.price_bps is None:
+        if resting.price_ticks is None:
             raise RuntimeError("Resting order must have a price")
 
         if incoming.symbol != resting.symbol:
@@ -190,12 +192,12 @@ class Exchange:
         buy_order = incoming if incoming.side is Side.BUY else resting
         sell_order = incoming if incoming.side is Side.SELL else resting
 
-        actual_cost = quantity * resting.price_bps
+        actual_cost = quantity * resting.price_ticks
 
         if buy_order.order_type is OrderType.LIMIT:
-            if buy_order.price_bps is None:
+            if buy_order.price_ticks is None:
                 raise RuntimeError("Limit buy order must have a price")
-            reserved_for_fill = quantity * buy_order.price_bps
+            reserved_for_fill = quantity * buy_order.price_ticks
         else:
             reserved_for_fill = actual_cost
 
@@ -234,7 +236,7 @@ class Exchange:
         trade = Trade(
             trade_id=self._generate_trade_id(),
             symbol=incoming.symbol,
-            price_bps=resting.price_bps,
+            price_ticks=resting.price_ticks,
             quantity=quantity,
             buy_order_id=buy_order.order_id,
             sell_order_id=sell_order.order_id,
@@ -333,7 +335,7 @@ class Exchange:
             order_type=request.order_type,
             original_quantity=request.original_quantity,
             remaining_quantity=request.original_quantity,
-            price_bps=request.price_bps,
+            price_ticks=request.price_ticks,
             sequence=self._generate_sequence_number(),
             timestamp=self._time(),
             status=OrderStatus.OPEN,

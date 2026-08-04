@@ -12,7 +12,7 @@ from mini_stock_exchange.exchange.order_queue import HeapOrderQueue
 # Helper function to make a dummy order for testing
 def make_order(
     order_id: int,
-    price: int | None,
+    price_ticks: int | None,
     sequence: int,
     side: Side = Side.BUY,
     status: OrderStatus = OrderStatus.OPEN,
@@ -27,7 +27,7 @@ def make_order(
         original_quantity=10,
         remaining_quantity=10,
         timestamp=sequence,
-        price_bps=price,
+        price_ticks=price_ticks,
         status=status,
     )
 
@@ -43,34 +43,34 @@ def test_empty_queue() -> None:
 
 
 @pytest.mark.parametrize(
-    ("side", "prices"),
+    ("side", "expected_ticks"),
     [
         (Side.BUY, [103, 102, 101]),
         (Side.SELL, [101, 102, 103]),
     ],
 )
-def test_pop_uses_price_time_priority(side: Side, prices: list[int]) -> None:
+def test_pop_uses_price_time_priority(side: Side, expected_ticks: list[int]) -> None:
     queue = HeapOrderQueue(side)
     orders = [
-        make_order(1, price=102, sequence=1, side=side),
-        make_order(2, price=101, sequence=2, side=side),
-        make_order(3, price=103, sequence=3, side=side),
+        make_order(1, price_ticks=102, sequence=1, side=side),
+        make_order(2, price_ticks=101, sequence=2, side=side),
+        make_order(3, price_ticks=103, sequence=3, side=side),
     ]
     for order in orders:
         queue.add(order)
 
-    for i in range(len(prices)):
+    for i in range(len(expected_ticks)):
         result = queue.pop()
         assert result is not None
-        assert result.price_bps == prices[i]
+        assert result.price_ticks == expected_ticks[i]
 
     assert len(queue) == 0
 
 
 def test_equal_prices_use_sequence_priority() -> None:
     queue = HeapOrderQueue(Side.BUY)
-    later = make_order(1, price=100, sequence=2)
-    earlier = make_order(2, price=100, sequence=1)
+    later = make_order(1, price_ticks=100, sequence=2)
+    earlier = make_order(2, price_ticks=100, sequence=1)
 
     queue.add(later)
     queue.add(earlier)
@@ -81,8 +81,8 @@ def test_equal_prices_use_sequence_priority() -> None:
 
 def test_get_follows_orders_after_heap_swaps() -> None:
     queue = HeapOrderQueue(Side.BUY)
-    low = make_order(1, price=100, sequence=1)
-    high = make_order(2, price=110, sequence=2)
+    low = make_order(1, price_ticks=100, sequence=1)
+    high = make_order(2, price_ticks=110, sequence=2)
 
     queue.add(low)
     queue.add(high)
@@ -94,10 +94,10 @@ def test_get_follows_orders_after_heap_swaps() -> None:
 def test_cancel_removes_order_and_restores_heap() -> None:
     queue = HeapOrderQueue(Side.BUY)
     orders = [
-        make_order(1, price=110, sequence=1),
-        make_order(2, price=105, sequence=2),
-        make_order(3, price=108, sequence=3),
-        make_order(4, price=100, sequence=4),
+        make_order(1, price_ticks=110, sequence=1),
+        make_order(2, price_ticks=105, sequence=2),
+        make_order(3, price_ticks=108, sequence=3),
+        make_order(4, price_ticks=100, sequence=4),
     ]
     for order in orders:
         queue.add(order)
@@ -114,18 +114,18 @@ def test_cancel_removes_order_and_restores_heap() -> None:
 
 def test_duplicate_order_id_is_rejected() -> None:
     queue = HeapOrderQueue(Side.BUY)
-    queue.add(make_order(1, price=100, sequence=1))
+    queue.add(make_order(1, price_ticks=100, sequence=1))
 
     with pytest.raises(ValueError, match="Order ID already exists"):
-        queue.add(make_order(1, price=101, sequence=2))
+        queue.add(make_order(1, price_ticks=101, sequence=2))
 
 
 def test_sorted_list_returns_priority_order_without_mutating_queue() -> None:
     queue = HeapOrderQueue(Side.SELL)
     orders = [
-        make_order(1, price=102, sequence=1, side=Side.SELL),
-        make_order(2, price=100, sequence=2, side=Side.SELL),
-        make_order(3, price=100, sequence=1, side=Side.SELL),
+        make_order(1, price_ticks=102, sequence=1, side=Side.SELL),
+        make_order(2, price_ticks=100, sequence=2, side=Side.SELL),
+        make_order(3, price_ticks=100, sequence=1, side=Side.SELL),
     ]
     for order in orders:
         queue.add(order)

@@ -6,7 +6,7 @@ type OrderId = int
 type TradeId = int
 type ParticipantId = str
 type Symbol = str
-type Price = int
+type PriceTicks = int  # 1 tick = $0.01
 type Cash = int  # 1 = $0.01
 type Quantity = int
 type Timestamp = int
@@ -44,7 +44,7 @@ class Instrument:
 
     Attributes:
         symbol (str): A globally unique string identifier such as AAPL.
-        tick_size (Decimal): Represents the decimal size of one basis point.
+        tick_size (Decimal): Display value of one tick. Currently $0.01.
 
     """
 
@@ -69,7 +69,7 @@ class Order:
         original_quantity (int): The quantity this order was placed at.
         remaining_quantity (int): Unfilled quantity remaining.
         timestamp (int): The timestamp the order was accepted at.
-        price_bps (Price): For limit orders, the price the order was placed at in bps.
+        price_ticks (PriceTicks): For limit orders, the price in integer ticks.
         status (OrderStatus): The current status of the order.
 
     """
@@ -83,7 +83,7 @@ class Order:
     original_quantity: Quantity
     remaining_quantity: Quantity
     timestamp: Timestamp
-    price_bps: Price | None
+    price_ticks: PriceTicks | None
     status: OrderStatus
 
     @property
@@ -143,8 +143,7 @@ class RequestForOrder:
         side (Side): The side of the order.
         order_type (OrderType): Specifies whether this is a limit or market order.
         original_quantity (int): The quantity this order is to be placed at.
-        price_bps (Price): For limit orders, the price the order is to be placed at
-            in bps.
+        price_ticks (PriceTicks): For limit orders, the price in integer ticks.
 
     """
 
@@ -153,7 +152,7 @@ class RequestForOrder:
     side: Side
     order_type: OrderType
     original_quantity: Quantity
-    price_bps: Price | None
+    price_ticks: PriceTicks | None
 
 
 @dataclass(frozen=True)
@@ -165,7 +164,7 @@ class Trade:
         trade_id (TradeId): Globally unique identifier for this trade.
         sequence (Sequence): The trade's sequence number.
         symbol (Symbol): The symbol of the instrument being traded.
-        price_bps (Price): The price in basis points at which the trade occurred.
+        price_ticks (PriceTicks): The execution price in integer ticks.
         quantity (Quantity): Quantity traded.
         buy_order_id (OrderId): The identifier of the correpsonding buy order.
         sell_order_id (OrderId): The identifier of the corresponding sell order.
@@ -178,7 +177,7 @@ class Trade:
     trade_id: TradeId
     sequence: Sequence
     symbol: Symbol
-    price_bps: Price
+    price_ticks: PriceTicks
     quantity: Quantity
 
     buy_order_id: OrderId

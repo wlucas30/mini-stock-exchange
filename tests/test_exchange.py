@@ -25,7 +25,7 @@ def make_request(
     participant_id: str,
     side: Side,
     quantity: int,
-    price: int | None,
+    price_ticks: int | None,
     order_type: OrderType = OrderType.LIMIT,
 ) -> RequestForOrder:
     return RequestForOrder(
@@ -34,7 +34,7 @@ def make_request(
         side=side,
         order_type=order_type,
         original_quantity=quantity,
-        price_bps=price,
+        price_ticks=price_ticks,
     )
 
 
@@ -48,7 +48,7 @@ def test_cancel_buy_limit_returns_reserved_cash() -> None:
     buyer = Participant("buyer", "Buyer", balance=1_000)
     exchange = make_exchange(buyer)
     order = exchange.place_order(
-        make_request("buyer", side=Side.BUY, quantity=5, price=100)
+        make_request("buyer", side=Side.BUY, quantity=5, price_ticks=100)
     )
 
     assert buyer.balance == 500
@@ -66,7 +66,7 @@ def test_cancel_sell_limit_returns_reserved_positions() -> None:
     seller = Participant("seller", "Seller", positions={"AAPL": 10})
     exchange = make_exchange(seller)
     order = exchange.place_order(
-        make_request("seller", side=Side.SELL, quantity=6, price=100)
+        make_request("seller", side=Side.SELL, quantity=6, price_ticks=100)
     )
 
     assert seller.positions["AAPL"] == 4
@@ -85,10 +85,10 @@ def test_full_fill_settles_escrow_and_refunds_price_improvement() -> None:
     seller = Participant("seller", "Seller", balance=0, positions={"AAPL": 5})
     exchange = make_exchange(buyer, seller)
     sell_order = exchange.place_order(
-        make_request("seller", side=Side.SELL, quantity=5, price=90)
+        make_request("seller", side=Side.SELL, quantity=5, price_ticks=90)
     )
     buy_order = exchange.place_order(
-        make_request("buyer", side=Side.BUY, quantity=5, price=100)
+        make_request("buyer", side=Side.BUY, quantity=5, price_ticks=100)
     )
 
     assert sell_order.status is OrderStatus.FILLED
@@ -105,9 +105,11 @@ def test_cancel_partially_filled_buy_returns_only_remaining_escrow() -> None:
     buyer = Participant("buyer", "Buyer", balance=1_000)
     seller = Participant("seller", "Seller", balance=0, positions={"AAPL": 2})
     exchange = make_exchange(buyer, seller)
-    exchange.place_order(make_request("seller", side=Side.SELL, quantity=2, price=90))
+    exchange.place_order(
+        make_request("seller", side=Side.SELL, quantity=2, price_ticks=90)
+    )
     buy_order = exchange.place_order(
-        make_request("buyer", side=Side.BUY, quantity=5, price=100)
+        make_request("buyer", side=Side.BUY, quantity=5, price_ticks=100)
     )
 
     assert buy_order.status is OrderStatus.PARTIALLY_FILLED
@@ -126,9 +128,11 @@ def test_cancel_partially_filled_sell_returns_only_remaining_positions() -> None
     buyer = Participant("buyer", "Buyer", balance=1_000)
     seller = Participant("seller", "Seller", balance=0, positions={"AAPL": 5})
     exchange = make_exchange(buyer, seller)
-    exchange.place_order(make_request("buyer", side=Side.BUY, quantity=2, price=100))
+    exchange.place_order(
+        make_request("buyer", side=Side.BUY, quantity=2, price_ticks=100)
+    )
     sell_order = exchange.place_order(
-        make_request("seller", side=Side.SELL, quantity=5, price=90)
+        make_request("seller", side=Side.SELL, quantity=5, price_ticks=90)
     )
 
     assert sell_order.status is OrderStatus.PARTIALLY_FILLED
@@ -152,7 +156,7 @@ def test_unfilled_market_sell_returns_positions() -> None:
             "seller",
             side=Side.SELL,
             quantity=5,
-            price=None,
+            price_ticks=None,
             order_type=OrderType.MARKET,
         )
     )
@@ -166,14 +170,16 @@ def test_market_buy_cost_does_not_remove_resting_asks() -> None:
     buyer = Participant("buyer", "Buyer", balance=1_000)
     seller = Participant("seller", "Seller", balance=0, positions={"AAPL": 2})
     exchange = make_exchange(buyer, seller)
-    exchange.place_order(make_request("seller", side=Side.SELL, quantity=2, price=90))
+    exchange.place_order(
+        make_request("seller", side=Side.SELL, quantity=2, price_ticks=90)
+    )
 
     buy_order = exchange.place_order(
         make_request(
             "buyer",
             side=Side.BUY,
             quantity=2,
-            price=None,
+            price_ticks=None,
             order_type=OrderType.MARKET,
         )
     )
