@@ -47,7 +47,7 @@ class Instrument:
 
     """
 
-    instrument_id: str
+    symbol: Symbol
     tick_size: Decimal
 
 
@@ -185,3 +185,9 @@ class Trade:
     seller_id: ParticipantId
 
     timestamp: Timestamp
+
+
+@dataclass(frozen=True)
+class Participant:
+    participant_id: ParticipantId
+    display_name: str
