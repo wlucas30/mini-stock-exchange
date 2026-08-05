@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from decimal import Decimal
 from enum import Enum, auto
 
 type OrderId = int
@@ -44,12 +43,10 @@ class Instrument:
 
     Attributes:
         symbol (str): A globally unique string identifier such as AAPL.
-        tick_size (Decimal): Display value of one tick. Currently $0.01.
 
     """
 
     symbol: Symbol
-    tick_size: Decimal
 
 
 @dataclass

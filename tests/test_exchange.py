@@ -1,7 +1,5 @@
 # pyright: reportPrivateUsage=false
 
-from decimal import Decimal
-
 from mini_stock_exchange.exchange.exchange import Exchange
 from mini_stock_exchange.exchange.models import (
     Instrument,
@@ -16,7 +14,7 @@ from mini_stock_exchange.exchange.models import (
 # Helper for creating a dummy exchange
 def make_exchange(*participants: Participant) -> Exchange:
     exchange = Exchange(time=lambda: 123)
-    exchange.add_instrument(Instrument(symbol="AAPL", tick_size=Decimal("0.01")))
+    exchange.add_instrument(Instrument(symbol="AAPL"))
     for participant in participants:
         exchange.add_participant(participant)
     return exchange
