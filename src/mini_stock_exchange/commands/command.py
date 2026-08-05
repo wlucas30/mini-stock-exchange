@@ -11,7 +11,6 @@ from mini_stock_exchange.exchange.models import (
     Symbol,
 )
 
-
 type Command = (
     AddInstrument
     | AddParticipant
@@ -68,4 +67,3 @@ class ShowTime:
 @dataclass(frozen=True, kw_only=True)
 class ShowGraph:
     symbol: Symbol
-    
