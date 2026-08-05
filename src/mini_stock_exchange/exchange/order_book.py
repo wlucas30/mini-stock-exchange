@@ -1,14 +1,24 @@
+from collections.abc import Callable
+
 from .models import Instrument, Order, OrderId, PriceTicks
-from .order_queue import HeapOrderQueue, Side
+from .order_queue import HeapOrderQueue, OrderQueue, Side
+
+
+def make_heap_order_queue(side: Side) -> OrderQueue:
+    return HeapOrderQueue(side)
 
 
 class OrderBook:
     """Represents the entire order book for a single instrument."""
 
-    def __init__(self, instrument: Instrument) -> None:
+    def __init__(
+        self,
+        instrument: Instrument,
+        queue_factory: Callable[[Side], OrderQueue] = make_heap_order_queue,
+    ) -> None:
         self._instrument = instrument
-        self._bids = HeapOrderQueue(Side.BUY)
-        self._asks = HeapOrderQueue(Side.SELL)
+        self._bids = queue_factory(Side.BUY)
+        self._asks = queue_factory(Side.SELL)
 
     @property
     def best_bid(self) -> Order | None:

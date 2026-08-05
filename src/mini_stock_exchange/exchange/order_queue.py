@@ -58,6 +58,11 @@ class OrderQueue(ABC):
     @abstractmethod
     def __iter__(self) -> Iterator[Order]: ...
 
+    @abstractmethod
+    def sorted_list(self) -> list[Order]:
+        """Returns a list of orders sorted by priority decreasing."""
+        ...
+
     def _higher_priority(self, order1: Order, order2: Order) -> bool:
         if order1.price_ticks is None or order2.price_ticks is None:
             raise ValueError("Resting orders must have a price")
@@ -209,8 +214,6 @@ class HeapOrderQueue(OrderQueue):
         return iter(self._contents)
 
     def sorted_list(self) -> list[Order]:
-        """Returns a list of orders sorted by priority decreasing."""
-
         def priority(order: Order) -> tuple[int, int]:
             if order.price_ticks is None:
                 raise RuntimeError("Resting order must have a price")
