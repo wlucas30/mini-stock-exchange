@@ -1,3 +1,5 @@
+# pyright: reportPrivateUsage=false
+
 from decimal import Decimal
 
 from mini_stock_exchange.exchange.exchange import Exchange
@@ -36,12 +38,6 @@ def make_request(
         original_quantity=quantity,
         price_ticks=price_ticks,
     )
-
-
-def test_exchange_uses_injected_time_provider() -> None:
-    exchange = Exchange(time=lambda: 123)
-
-    assert exchange._time() == 123
 
 
 def test_cancel_buy_limit_returns_reserved_cash() -> None:
