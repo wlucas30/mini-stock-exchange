@@ -389,3 +389,11 @@ class Exchange:
 
     def get_time(self) -> Timestamp:
         return self._time()
+
+    def get_instrument_symbols(self) -> tuple[Symbol, ...]:
+        """Return the symbols of all registered instruments."""
+        return tuple(self._instruments)
+
+    def get_participant_ids(self) -> tuple[ParticipantId, ...]:
+        """Return the identifiers of all registered participants."""
+        return tuple(self._participants)

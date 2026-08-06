@@ -6,6 +6,7 @@ from mini_stock_exchange.exchange.models import (
     Order,
     OrderId,
     Participant,
+    ParticipantId,
     PriceTicks,
     RequestForOrder,
     Symbol,
@@ -19,6 +20,8 @@ from .command import (
     AddParticipant,
     CancelOrder,
     Command,
+    ListInstruments,
+    ListParticipants,
     PlaceOrder,
     ShowBook,
     ShowGraph,
@@ -30,6 +33,8 @@ type ExecutorResponse = (
     ErrorResponse
     | AddInstrumentResponse
     | AddParticipantResponse
+    | ListInstrumentsResponse
+    | ListParticipantsResponse
     | PlaceOrderResponse
     | CancelOrderResponse
     | ShowBookResponse
@@ -54,6 +59,16 @@ class AddInstrumentResponse:
 @dataclass(frozen=True, kw_only=True)
 class AddParticipantResponse:
     participant: Participant
+
+
+@dataclass(frozen=True, kw_only=True)
+class ListInstrumentsResponse:
+    symbols: tuple[Symbol, ...]
+
+
+@dataclass(frozen=True, kw_only=True)
+class ListParticipantsResponse:
+    participant_ids: tuple[ParticipantId, ...]
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -119,6 +134,16 @@ class Executor:
                     return AddParticipantResponse(participant=participant)
                 except ValueError as error:
                     return ErrorResponse(message=f"Failed to add participant: {error}")
+
+            case ListInstruments():
+                return ListInstrumentsResponse(
+                    symbols=self._exchange.get_instrument_symbols()
+                )
+
+            case ListParticipants():
+                return ListParticipantsResponse(
+                    participant_ids=self._exchange.get_participant_ids()
+                )
 
             case PlaceOrder():
                 request = RequestForOrder(

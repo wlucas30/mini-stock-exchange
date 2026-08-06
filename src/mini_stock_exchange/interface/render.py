@@ -15,6 +15,8 @@ from mini_stock_exchange.commands.execute import (
     ErrorResponse,
     ExecutorResponse,
     GraphEntry,
+    ListInstrumentsResponse,
+    ListParticipantsResponse,
     PlaceOrderResponse,
     ShowBookResponse,
     ShowGraphResponse,
@@ -87,6 +89,22 @@ class Renderer:
 
             case CancelOrderResponse(order_id=order_id):
                 return TextOutput(text=f"Successfully cancelled order {order_id}")
+
+            case ListInstrumentsResponse(symbols=symbols):
+                table = tabulate(
+                    ((symbol,) for symbol in symbols),
+                    headers=("INSTRUMENT",),
+                    tablefmt="simple",
+                )
+                return TextOutput(text=table)
+
+            case ListParticipantsResponse(participant_ids=participant_ids):
+                table = tabulate(
+                    ((participant_id,) for participant_id in participant_ids),
+                    headers=("PARTICIPANT",),
+                    tablefmt="simple",
+                )
+                return TextOutput(text=table)
 
             case ShowBookResponse(book=book):
                 rows = [

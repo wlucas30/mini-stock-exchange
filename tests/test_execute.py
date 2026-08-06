@@ -1,5 +1,7 @@
 from mini_stock_exchange.commands.command import (
     AddInstrument,
+    ListInstruments,
+    ListParticipants,
     ShowGraph,
     ShowTime,
 )
@@ -8,6 +10,8 @@ from mini_stock_exchange.commands.execute import (
     ErrorResponse,
     Executor,
     GraphEntry,
+    ListInstrumentsResponse,
+    ListParticipantsResponse,
     ShowGraphResponse,
     ShowTimeResponse,
 )
@@ -47,6 +51,26 @@ def test_show_time_returns_exchange_time() -> None:
     response = executor.execute(ShowTime())
 
     assert response == ShowTimeResponse(timestamp=123)
+
+
+def test_list_instruments_returns_registered_symbols() -> None:
+    exchange = Exchange(time=lambda: 100)
+    exchange.add_instrument(Instrument(symbol="AAPL"))
+    exchange.add_instrument(Instrument(symbol="MSFT"))
+
+    response = Executor(exchange).execute(ListInstruments())
+
+    assert response == ListInstrumentsResponse(symbols=("AAPL", "MSFT"))
+
+
+def test_list_participants_returns_registered_ids() -> None:
+    exchange = Exchange(time=lambda: 100)
+    exchange.add_participant(Participant("ALICE", "Alice"))
+    exchange.add_participant(Participant("BOB", "Bob"))
+
+    response = Executor(exchange).execute(ListParticipants())
+
+    assert response == ListParticipantsResponse(participant_ids=("ALICE", "BOB"))
 
 
 def test_show_graph_returns_trades_for_requested_symbol() -> None:
