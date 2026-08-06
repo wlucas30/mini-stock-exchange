@@ -8,6 +8,7 @@ from mini_stock_exchange.exchange.models import (
     Participant,
     PriceTicks,
     RequestForOrder,
+    Symbol,
     Timestamp,
     Trade,
 )
@@ -40,6 +41,7 @@ type ExecutorResponse = (
 
 @dataclass(frozen=True, kw_only=True)
 class ErrorResponse:
+    """The response returned by the command executor when an error occurs."""
     message: str
 
 
@@ -80,13 +82,14 @@ class ShowTradesResponse:
 
 @dataclass(frozen=True, kw_only=True)
 class ShowGraphResponse:
-    graph: list[GraphEntry]
+    symbol: Symbol
+    entries: tuple[GraphEntry, ...]
 
 
 @dataclass(frozen=True, kw_only=True)
 class GraphEntry:
     timestamp: Timestamp
-    price: PriceTicks
+    price_ticks: PriceTicks
 
 
 class Executor:
@@ -159,5 +162,18 @@ class Executor:
                 except ValueError as error:
                     return ErrorResponse(message=f"Failed to get time: {error}")
 
-            case ShowGraph():
-                raise NotImplementedError()
+            case ShowGraph(symbol=symbol):
+                try:
+                    trades = self._exchange.get_trades_by_symbol(symbol)
+                except ValueError as error:
+                    return ErrorResponse(message=f"Failed to generate graph: {error}")
+
+                entries = tuple(
+                    GraphEntry(
+                        timestamp=trade.timestamp,
+                        price_ticks=trade.price_ticks,
+                    )
+                    for trade in trades
+                )
+
+                return ShowGraphResponse(symbol=symbol, entries=entries)

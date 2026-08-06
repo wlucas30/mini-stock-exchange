@@ -315,6 +315,17 @@ class Exchange:
         """Return an immutable snapshot of completed trades."""
         return tuple(self._trades)
 
+    def get_trades_by_symbol(self, symbol: Symbol) -> tuple[Trade, ...]:
+        """Return an immutable snapshot of completed trades for a particular symbol."""
+        if symbol not in self._instruments:
+            raise ValueError(f"Symbol {symbol} does not exist")
+
+        return tuple(
+            trade
+            for trade in self._trades
+            if trade.symbol == symbol
+        )
+
     def cancel_order(self, order_id: OrderId) -> None:
         """Cancels an active order."""
         order = self._active_orders.get(order_id)
