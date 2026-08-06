@@ -42,6 +42,7 @@ type ExecutorResponse = (
 @dataclass(frozen=True, kw_only=True)
 class ErrorResponse:
     """The response returned by the command executor when an error occurs."""
+
     message: str
 
 

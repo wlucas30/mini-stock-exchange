@@ -320,11 +320,7 @@ class Exchange:
         if symbol not in self._instruments:
             raise ValueError(f"Symbol {symbol} does not exist")
 
-        return tuple(
-            trade
-            for trade in self._trades
-            if trade.symbol == symbol
-        )
+        return tuple(trade for trade in self._trades if trade.symbol == symbol)
 
     def cancel_order(self, order_id: OrderId) -> None:
         """Cancels an active order."""
