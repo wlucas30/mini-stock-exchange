@@ -5,6 +5,8 @@ from mini_stock_exchange.commands.command import (
     AddParticipant,
     CancelOrder,
     Command,
+    ListInstruments,
+    ListParticipants,
     PlaceOrder,
     ShowBook,
     ShowGraph,
@@ -25,6 +27,8 @@ def parse(source: str) -> Command:
     [
         ("ADD INSTR AAPL", AddInstrument(symbol="AAPL")),
         ("ADD PARTICIPANT ALICE", AddParticipant(participant_id="ALICE")),
+        ("LIST INSTR", ListInstruments()),
+        ("LIST PARTICIPANT", ListParticipants()),
         (
             "AS ALICE BUY AAPL MARKET QUANTITY 5",
             PlaceOrder(
@@ -112,6 +116,7 @@ def test_rejects_nonpositive_integers(source: str, message: str) -> None:
         "AS ALICE BUY AAPL MARKET 5",
         "SHOW BOOK",
         "SHOW UNKNOWN",
+        "LIST UNKNOWN",
     ],
 )
 def test_rejects_incomplete_or_unknown_commands(source: str) -> None:
@@ -126,6 +131,7 @@ def test_rejects_incomplete_or_unknown_commands(source: str) -> None:
         "AS ALICE CANCEL ORDER 42 EXTRA",
         "AS ALICE BUY AAPL MARKET QUANTITY 5 EXTRA",
         "SHOW TIME EXTRA",
+        "LIST INSTR EXTRA",
     ],
 )
 def test_rejects_trailing_tokens(source: str) -> None:

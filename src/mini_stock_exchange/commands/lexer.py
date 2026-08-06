@@ -11,6 +11,7 @@ class TokenType(Enum):
     GRAPH = auto()
     INSTR = auto()
     LIMIT = auto()
+    LIST = auto()
     MARKET = auto()
     ORDER = auto()
     PARTICIPANT = auto()
@@ -35,6 +36,7 @@ KEYWORDS: dict[str, TokenType] = {
     "GRAPH": TokenType.GRAPH,
     "INSTR": TokenType.INSTR,
     "LIMIT": TokenType.LIMIT,
+    "LIST": TokenType.LIST,
     "MARKET": TokenType.MARKET,
     "ORDER": TokenType.ORDER,
     "PARTICIPANT": TokenType.PARTICIPANT,

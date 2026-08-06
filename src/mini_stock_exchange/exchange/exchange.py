@@ -9,6 +9,7 @@ from .models import (
     OrderType,
     Participant,
     ParticipantId,
+    ParticipantSummary,
     Quantity,
     RequestForOrder,
     Sequence,
@@ -389,3 +390,17 @@ class Exchange:
 
     def get_time(self) -> Timestamp:
         return self._time()
+
+    def get_instrument_symbols(self) -> tuple[Symbol, ...]:
+        """Return the symbols of all registered instruments."""
+        return tuple(self._instruments)
+
+    def get_participant_summaries(self) -> tuple[ParticipantSummary, ...]:
+        """Return summaries of all registered participants."""
+        return tuple(
+            ParticipantSummary(
+                participant_id=participant.participant_id,
+                balance=participant.balance,
+            )
+            for participant in self._participants.values()
+        )

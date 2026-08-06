@@ -15,13 +15,15 @@ from mini_stock_exchange.commands.execute import (
     ErrorResponse,
     ExecutorResponse,
     GraphEntry,
+    ListInstrumentsResponse,
+    ListParticipantsResponse,
     PlaceOrderResponse,
     ShowBookResponse,
     ShowGraphResponse,
     ShowTimeResponse,
     ShowTradesResponse,
 )
-from mini_stock_exchange.exchange.models import Symbol
+from mini_stock_exchange.exchange.models import Cash, Symbol
 
 type RenderedOutput = TextOutput | FigureOutput
 
@@ -38,6 +40,12 @@ class FigureOutput:
 
 
 class Renderer:
+    @staticmethod
+    def _format_cash(balance: Cash) -> str:
+        sign = "-" if balance < 0 else ""
+        dollars, cents = divmod(abs(balance), 100)
+        return f"{sign}${dollars:,}.{cents:02d}"
+
     @staticmethod
     def _generate_graph(symbol: Symbol, entries: tuple[GraphEntry, ...]) -> Figure:
         figure, axes = plt.subplots(figsize=(8, 4.5), layout="constrained")
@@ -87,6 +95,29 @@ class Renderer:
 
             case CancelOrderResponse(order_id=order_id):
                 return TextOutput(text=f"Successfully cancelled order {order_id}")
+
+            case ListInstrumentsResponse(symbols=symbols):
+                table = tabulate(
+                    ((symbol,) for symbol in symbols),
+                    headers=("INSTRUMENT",),
+                    tablefmt="simple",
+                )
+                return TextOutput(text=table)
+
+            case ListParticipantsResponse(participants=participants):
+                table = tabulate(
+                    (
+                        (
+                            participant.participant_id,
+                            self._format_cash(participant.balance),
+                        )
+                        for participant in participants
+                    ),
+                    headers=("PARTICIPANT", "BALANCE"),
+                    tablefmt="simple",
+                    colalign=("left", "right"),
+                )
+                return TextOutput(text=table)
 
             case ShowBookResponse(book=book):
                 rows = [
