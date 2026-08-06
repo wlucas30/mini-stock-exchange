@@ -6,7 +6,7 @@ from mini_stock_exchange.exchange.models import (
     Order,
     OrderId,
     Participant,
-    ParticipantId,
+    ParticipantSummary,
     PriceTicks,
     RequestForOrder,
     Symbol,
@@ -68,7 +68,7 @@ class ListInstrumentsResponse:
 
 @dataclass(frozen=True, kw_only=True)
 class ListParticipantsResponse:
-    participant_ids: tuple[ParticipantId, ...]
+    participants: tuple[ParticipantSummary, ...]
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -142,7 +142,7 @@ class Executor:
 
             case ListParticipants():
                 return ListParticipantsResponse(
-                    participant_ids=self._exchange.get_participant_ids()
+                    participants=self._exchange.get_participant_summaries()
                 )
 
             case PlaceOrder():
