@@ -1,6 +1,17 @@
 from collections.abc import Callable
+from dataclasses import dataclass
 
-from .models import Instrument, Order, OrderId, PriceTicks
+from .models import (
+    Instrument,
+    Order,
+    OrderId,
+    ParticipantId,
+    PriceTicks,
+    Quantity,
+    Sequence,
+    Symbol,
+    Timestamp,
+)
 from .order_queue import HeapOrderQueue, OrderQueue, Side
 
 
@@ -38,6 +49,20 @@ class OrderBook:
         order = self.best_ask
         return order.price_ticks if order is not None else None
 
+    @staticmethod
+    def _snapshot_entry(order: Order) -> BookEntry:
+        if order.price_ticks is None:
+            raise RuntimeError("Resting order must have a price")
+
+        return BookEntry(
+            order_id=order.order_id,
+            participant_id=order.participant_id,
+            price_ticks=order.price_ticks,
+            remaining_quantity=order.remaining_quantity,
+            sequence=order.sequence,
+            timestamp=order.timestamp,
+        )
+
     def add_order(self, order: Order) -> None:
         """Adds an order to the relevant queue."""
         side = order.side
@@ -57,3 +82,31 @@ class OrderBook:
     def asks_by_priority(self) -> list[Order]:
         """Returns a list of asks ordered by priority decreasing."""
         return self._asks.sorted_list()
+
+    def snapshot(self) -> BookSnapshot:
+        return BookSnapshot(
+            symbol=self._instrument.symbol,
+            bids=tuple(
+                self._snapshot_entry(order) for order in self._bids.sorted_list()
+            ),
+            asks=tuple(
+                self._snapshot_entry(order) for order in self._asks.sorted_list()
+            ),
+        )
+
+
+@dataclass(frozen=True, kw_only=True)
+class BookEntry:
+    order_id: OrderId
+    participant_id: ParticipantId
+    price_ticks: PriceTicks
+    remaining_quantity: Quantity
+    sequence: Sequence
+    timestamp: Timestamp
+
+
+@dataclass(frozen=True, kw_only=True)
+class BookSnapshot:
+    symbol: Symbol
+    bids: tuple[BookEntry, ...]
+    asks: tuple[BookEntry, ...]

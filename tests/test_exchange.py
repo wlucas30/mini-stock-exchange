@@ -56,6 +56,20 @@ def test_cancel_buy_limit_returns_reserved_cash() -> None:
     assert exchange._order_books["AAPL"].best_bid is None
 
 
+def test_order_registry_retains_inactive_orders() -> None:
+    buyer = Participant("buyer", "Buyer", balance=1_000)
+    exchange = make_exchange(buyer)
+    order = exchange.place_order(
+        make_request("buyer", side=Side.BUY, quantity=5, price_ticks=100)
+    )
+
+    exchange.cancel_order(order.order_id)
+
+    assert order.order_id not in exchange._active_orders
+    assert exchange._orders[order.order_id] is order
+    assert order.status is OrderStatus.CANCELLED
+
+
 def test_cancel_sell_limit_returns_reserved_positions() -> None:
     seller = Participant("seller", "Seller", positions={"AAPL": 10})
     exchange = make_exchange(seller)
