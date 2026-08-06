@@ -18,7 +18,7 @@ from .models import (
     Trade,
     TradeId,
 )
-from .order_book import OrderBook
+from .order_book import BookSnapshot, OrderBook
 
 
 class Exchange:
@@ -29,6 +29,7 @@ class Exchange:
         self._order_books: dict[Symbol, OrderBook] = {}
         self._participants: dict[ParticipantId, Participant] = {}
 
+        self._orders: dict[OrderId, Order] = {}
         self._active_orders: dict[OrderId, Order] = {}
         self._trades: list[Trade] = []
         self._reserved_cash: dict[OrderId, Cash] = {}
@@ -284,6 +285,36 @@ class Exchange:
         else:
             self.cancel_order(incoming.order_id)
 
+    def require_order_ownership(
+        self,
+        participant_id: ParticipantId,
+        order_id: OrderId,
+    ) -> None:
+        """Requires the given order to be owned by the given participant."""
+        order = self._orders.get(order_id, None)
+        if order is None:
+            raise ValueError(f"{order_id} is not associated with any order")
+
+        if self._participants.get(participant_id, None) is None:
+            raise ValueError(f"{participant_id} is not associated with any participant")
+
+        if order.participant_id != participant_id:
+            raise ValueError(
+                f"Participant {participant_id} does not own order {order_id}"
+            )
+
+    def get_book_snapshot(self, symbol: Symbol) -> BookSnapshot:
+        """Return an immutable snapshot of an instrument's order book."""
+        book = self._order_books.get(symbol)
+        if book is None:
+            raise ValueError(f"{symbol} has no associated order book")
+
+        return book.snapshot()
+
+    def get_trades(self) -> tuple[Trade, ...]:
+        """Return an immutable snapshot of completed trades."""
+        return tuple(self._trades)
+
     def cancel_order(self, order_id: OrderId) -> None:
         """Cancels an active order."""
         order = self._active_orders.get(order_id)
@@ -342,8 +373,12 @@ class Exchange:
         )
 
         self._reserve_order(order)
+        self._orders[order.order_id] = order
         self._active_orders[order.order_id] = order
 
         self._process_order(order)
 
         return order
+
+    def get_time(self) -> Timestamp:
+        return self._time()
