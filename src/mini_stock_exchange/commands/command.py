@@ -14,6 +14,8 @@ from mini_stock_exchange.exchange.models import (
 type Command = (
     AddInstrument
     | AddParticipant
+    | ListInstruments
+    | ListParticipants
     | PlaceOrder
     | CancelOrder
     | ShowBook
@@ -31,6 +33,16 @@ class AddInstrument:
 @dataclass(frozen=True, kw_only=True)
 class AddParticipant:
     participant_id: ParticipantId
+
+
+@dataclass(frozen=True, kw_only=True)
+class ListInstruments:
+    pass
+
+
+@dataclass(frozen=True, kw_only=True)
+class ListParticipants:
+    pass
 
 
 @dataclass(frozen=True, kw_only=True)

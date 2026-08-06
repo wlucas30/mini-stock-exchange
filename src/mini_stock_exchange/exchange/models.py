@@ -199,3 +199,11 @@ class Participant:
         default_factory=dict[Symbol, Quantity],
         repr=False,
     )
+
+
+@dataclass(frozen=True, kw_only=True)
+class ParticipantSummary:
+    """An immutable summary of a participant."""
+
+    participant_id: ParticipantId
+    balance: Cash

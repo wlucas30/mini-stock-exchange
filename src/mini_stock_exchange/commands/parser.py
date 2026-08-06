@@ -7,6 +7,8 @@ from .command import (
     AddParticipant,
     CancelOrder,
     Command,
+    ListInstruments,
+    ListParticipants,
     PlaceOrder,
     ShowBook,
     ShowGraph,
@@ -140,6 +142,24 @@ class Parser:
                         raise ParserError(
                             f"Command not recognised: AS {participant_ident.lexeme}"
                             + f"{self._peek().lexeme}"
+                        )
+
+            case TokenType.LIST:
+                self._advance()
+                match self._peek().type:
+                    case TokenType.INSTR:
+                        self._advance()
+                        self._expect(TokenType.END)
+                        return ListInstruments()
+
+                    case TokenType.PARTICIPANT:
+                        self._advance()
+                        self._expect(TokenType.END)
+                        return ListParticipants()
+
+                    case _:
+                        raise ParserError(
+                            f"Command not recognised: LIST {self._peek().lexeme}"
                         )
 
             case TokenType.SHOW:
