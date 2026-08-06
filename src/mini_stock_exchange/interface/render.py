@@ -1,12 +1,10 @@
+"""Convert ExecutorResponse values into plaintext and graphical responses."""
+
 # pyright: reportUnknownMemberType=false
-
-"""Contains logic for converting internal ExecutorResponse datatypes..."""
-
-"""Contains logic for converting internal ExecutorResponse datatypes into plaintext
-and graphical responses."""
 
 from dataclasses import dataclass
 
+from matplotlib import pyplot as plt
 from matplotlib.figure import Figure
 from tabulate import tabulate
 
@@ -42,8 +40,7 @@ class FigureOutput:
 class Renderer:
     @staticmethod
     def _generate_graph(symbol: Symbol, entries: tuple[GraphEntry, ...]) -> Figure:
-        figure = Figure(figsize=(8, 4.5), layout="constrained")
-        axes = figure.subplots()
+        figure, axes = plt.subplots(figsize=(8, 4.5), layout="constrained")
 
         axes.set_title(f"{symbol} trade price history")
         axes.set_xlabel("Simulation time")
