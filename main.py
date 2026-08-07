@@ -1,15 +1,18 @@
 # pyright: reportUnknownMemberType=false
 
+from pathlib import Path
 from time import time_ns
 
 from matplotlib import pyplot as plt
 
+from mini_stock_exchange.configuration import seed_exchange
 from mini_stock_exchange.exchange.exchange import Exchange
 from mini_stock_exchange.interface.controller import Controller
 from mini_stock_exchange.interface.render import FigureOutput, TextOutput
 
 RED = "\033[31m"
 RESET = "\033[0m"
+DEFAULT_INSTRUMENTS = Path(__file__).parent / "config" / "default_instruments.csv"
 
 
 def display(output: TextOutput | FigureOutput) -> None:
@@ -26,7 +29,9 @@ def display(output: TextOutput | FigureOutput) -> None:
 
 
 def main() -> None:
-    controller = Controller(Exchange(time=time_ns))
+    exchange = Exchange(time=time_ns)
+    seed_exchange(exchange, DEFAULT_INSTRUMENTS)
+    controller = Controller(exchange)
 
     print("Mini Stock Exchange")
     print("Enter a command, or press Ctrl-D to exit.")
