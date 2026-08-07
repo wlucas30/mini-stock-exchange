@@ -26,3 +26,16 @@ pytest
 ruff check .
 ruff format --check .
 ```
+
+## Running
+
+Start the interactive exchange with:
+
+```bash
+python main.py
+```
+
+At startup, `config/default_instruments.csv` creates ALPHA, BETA and GAMMA and
+places an initial sell order for 100 units of each instrument on behalf of the
+`EXCHANGE_MASTER` participant. Prices in the configuration file are integer
+ticks, where one tick is one cent.
