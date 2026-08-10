@@ -10,6 +10,7 @@ from mini_stock_exchange.commands.command import (
     PlaceOrder,
     ShowBook,
     ShowGraph,
+    ShowParticipant,
     ShowTime,
     ShowTrades,
 )
@@ -78,6 +79,10 @@ def parse(source: str) -> Command:
             CancelOrder(participant_id="ALICE", order_id=42),
         ),
         ("SHOW BOOK AAPL", ShowBook(symbol="AAPL")),
+        (
+            "SHOW PARTICIPANT ALICE",
+            ShowParticipant(participant_id="ALICE"),
+        ),
         ("SHOW TRADES", ShowTrades()),
         ("SHOW TIME", ShowTime()),
         ("SHOW GRAPH AAPL", ShowGraph(symbol="AAPL")),
@@ -115,6 +120,7 @@ def test_rejects_nonpositive_integers(source: str, message: str) -> None:
         "AS ALICE BUY AAPL LIMIT 100 QUANTITY 5",
         "AS ALICE BUY AAPL MARKET 5",
         "SHOW BOOK",
+        "SHOW PARTICIPANT",
         "SHOW UNKNOWN",
         "LIST UNKNOWN",
     ],

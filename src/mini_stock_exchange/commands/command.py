@@ -22,6 +22,7 @@ type Command = (
     | ShowTrades
     | ShowTime
     | ShowGraph
+    | ShowParticipant
 )
 
 
@@ -64,6 +65,11 @@ class CancelOrder:
 @dataclass(frozen=True, kw_only=True)
 class ShowBook:
     symbol: Symbol
+
+
+@dataclass(frozen=True, kw_only=True)
+class ShowParticipant:
+    participant_id: ParticipantId
 
 
 @dataclass(frozen=True, kw_only=True)

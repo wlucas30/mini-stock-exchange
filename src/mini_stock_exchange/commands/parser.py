@@ -12,6 +12,7 @@ from .command import (
     PlaceOrder,
     ShowBook,
     ShowGraph,
+    ShowParticipant,
     ShowTime,
     ShowTrades,
 )
@@ -170,6 +171,12 @@ class Parser:
                         ident = self._expect(TokenType.IDENTIFIER)
                         self._expect(TokenType.END)
                         return ShowBook(symbol=ident.lexeme)
+
+                    case TokenType.PARTICIPANT:
+                        self._advance()
+                        ident = self._expect(TokenType.IDENTIFIER)
+                        self._expect(TokenType.END)
+                        return ShowParticipant(participant_id=ident.lexeme)
 
                     case TokenType.TRADES:
                         self._advance()
