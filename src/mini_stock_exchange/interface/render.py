@@ -20,6 +20,7 @@ from mini_stock_exchange.commands.execute import (
     PlaceOrderResponse,
     ShowBookResponse,
     ShowGraphResponse,
+    ShowParticipantResponse,
     ShowTimeResponse,
     ShowTradesResponse,
 )
@@ -146,6 +147,41 @@ class Renderer:
                     colalign=("left", "right", "right", "right"),
                 )
                 return TextOutput(text=f"BOOK {book.symbol}\n\n{table}")
+
+            case ShowParticipantResponse(participant=participant):
+                cash_table = tabulate(
+                    (
+                        (
+                            self._format_cash(participant.available_cash),
+                            self._format_cash(participant.reserved_cash),
+                            self._format_cash(participant.total_cash),
+                        ),
+                    ),
+                    headers=("AVAILABLE CASH", "RESERVED CASH", "TOTAL CASH"),
+                    tablefmt="simple",
+                    colalign=("right", "right", "right"),
+                )
+                position_table = tabulate(
+                    (
+                        (
+                            position.symbol,
+                            position.available_quantity,
+                            position.reserved_quantity,
+                            position.total_quantity,
+                        )
+                        for position in participant.positions
+                    ),
+                    headers=("SYMBOL", "AVAILABLE", "RESERVED", "TOTAL"),
+                    tablefmt="simple",
+                    colalign=("left", "right", "right", "right"),
+                )
+                return TextOutput(
+                    text=(
+                        f"PARTICIPANT {participant.participant_id}\n"
+                        f"NAME {participant.display_name}\n\n"
+                        f"{cash_table}\n\nPOSITIONS\n{position_table}"
+                    )
+                )
 
             case ShowTradesResponse(trades=trades):
                 rows = [

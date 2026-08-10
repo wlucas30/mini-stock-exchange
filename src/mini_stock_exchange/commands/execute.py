@@ -6,6 +6,7 @@ from mini_stock_exchange.exchange.models import (
     Order,
     OrderId,
     Participant,
+    ParticipantDetails,
     ParticipantSummary,
     PriceTicks,
     RequestForOrder,
@@ -25,6 +26,7 @@ from .command import (
     PlaceOrder,
     ShowBook,
     ShowGraph,
+    ShowParticipant,
     ShowTime,
     ShowTrades,
 )
@@ -41,6 +43,7 @@ type ExecutorResponse = (
     | ShowTradesResponse
     | ShowTimeResponse
     | ShowGraphResponse
+    | ShowParticipantResponse
 )
 
 
@@ -100,6 +103,11 @@ class ShowTradesResponse:
 class ShowGraphResponse:
     symbol: Symbol
     entries: tuple[GraphEntry, ...]
+
+
+@dataclass(frozen=True, kw_only=True)
+class ShowParticipantResponse:
+    participant: ParticipantDetails
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -175,6 +183,13 @@ class Executor:
                     return ShowBookResponse(book=book)
                 except ValueError as error:
                     return ErrorResponse(message=f"Failed to get order book: {error}")
+
+            case ShowParticipant(participant_id=participant_id):
+                try:
+                    participant = self._exchange.get_participant_details(participant_id)
+                    return ShowParticipantResponse(participant=participant)
+                except ValueError as error:
+                    return ErrorResponse(message=f"Failed to get participant: {error}")
 
             case ShowTrades():
                 try:

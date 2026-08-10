@@ -207,3 +207,31 @@ class ParticipantSummary:
 
     participant_id: ParticipantId
     balance: Cash
+
+
+@dataclass(frozen=True, kw_only=True)
+class ParticipantPositionSummary:
+    """Available and reserved quantities for one participant position."""
+
+    symbol: Symbol
+    available_quantity: Quantity
+    reserved_quantity: Quantity
+
+    @property
+    def total_quantity(self) -> Quantity:
+        return self.available_quantity + self.reserved_quantity
+
+
+@dataclass(frozen=True, kw_only=True)
+class ParticipantDetails:
+    """An immutable accounting snapshot for one participant."""
+
+    participant_id: ParticipantId
+    display_name: str
+    available_cash: Cash
+    reserved_cash: Cash
+    positions: tuple[ParticipantPositionSummary, ...]
+
+    @property
+    def total_cash(self) -> Cash:
+        return self.available_cash + self.reserved_cash
