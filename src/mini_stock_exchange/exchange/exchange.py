@@ -8,7 +8,9 @@ from .models import (
     OrderStatus,
     OrderType,
     Participant,
+    ParticipantDetails,
     ParticipantId,
+    ParticipantPositionSummary,
     ParticipantSummary,
     Quantity,
     RequestForOrder,
@@ -403,4 +405,47 @@ class Exchange:
                 balance=participant.balance,
             )
             for participant in self._participants.values()
+        )
+
+    def get_participant_details(
+        self,
+        participant_id: ParticipantId,
+    ) -> ParticipantDetails:
+        """Return an immutable accounting snapshot for one participant."""
+        participant = self._participants.get(participant_id)
+        if participant is None:
+            raise ValueError(f"Participant {participant_id} does not exist")
+
+        reserved_cash = sum(
+            amount
+            for order_id, amount in self._reserved_cash.items()
+            if self._orders[order_id].participant_id == participant_id
+        )
+        reserved_positions: dict[Symbol, Quantity] = {}
+        for order_id, quantity in self._reserved_positions.items():
+            order = self._orders[order_id]
+            if order.participant_id != participant_id:
+                continue
+            reserved_positions[order.symbol] = (
+                reserved_positions.get(order.symbol, 0) + quantity
+            )
+
+        symbols = dict.fromkeys((*participant.positions, *reserved_positions))
+        positions = tuple(
+            ParticipantPositionSummary(
+                symbol=symbol,
+                available_quantity=participant.positions.get(symbol, 0),
+                reserved_quantity=reserved_positions.get(symbol, 0),
+            )
+            for symbol in symbols
+            if participant.positions.get(symbol, 0) != 0
+            or reserved_positions.get(symbol, 0) != 0
+        )
+
+        return ParticipantDetails(
+            participant_id=participant.participant_id,
+            display_name=participant.display_name,
+            available_cash=participant.balance,
+            reserved_cash=reserved_cash,
+            positions=positions,
         )
