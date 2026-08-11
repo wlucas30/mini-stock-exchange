@@ -50,6 +50,7 @@ This allows the user to intervene and act as any participant. The user can:
     \item inspect an instrument's order book;
     \item inspect the exchange's completed trades;
     \item inspect the current simulation time;
+    \item control the speed of simulation time;
     \item and display a price graph for an instrument.
 \end{itemize}
 
@@ -119,6 +120,8 @@ command =
       add-instrument-command
     | add-participant-command
     | list-command
+    | set-time-multiplier-command
+    | fast-forward-command
     | participant-command
     | show-command
     ;
@@ -134,6 +137,14 @@ add-participant-command =
 list-command =
       "LIST", "INSTR"
     | "LIST", "PARTICIPANT"
+    ;
+
+set-time-multiplier-command =
+    "SET", "TIME", "MULTIPLIER", nonnegative-integer
+    ;
+
+fast-forward-command =
+    "FAST", "FORWARD", nonnegative-integer
     ;
 
 participant-command =
@@ -185,6 +196,10 @@ price =
 
 quantity =
     positive-integer
+    ;
+
+nonnegative-integer =
+    digit, { digit }
     ;
 
 order-id =
@@ -577,6 +592,51 @@ Displays the current simulation time.
 
 \begin{lstlisting}
 SHOW TIME
+\end{lstlisting}
+
+Simulation time starts at zero. While the program is running, one real second
+advances simulation time by the current multiplier.
+
+\subsection{\texttt{SET TIME MULTIPLIER}}
+
+\subsubsection*{Syntax}
+
+\begin{lstlisting}
+SET TIME MULTIPLIER <multiplier>
+\end{lstlisting}
+
+\subsubsection*{Description}
+
+Sets the number of simulation-time units added on each automatic one-second
+advance. The multiplier must be a non-negative integer. A multiplier of zero
+pauses automatic simulation-time advancement.
+
+\subsubsection*{Examples}
+
+\begin{lstlisting}
+SET TIME MULTIPLIER 5
+SET TIME MULTIPLIER 0
+\end{lstlisting}
+
+\subsection{\texttt{FAST FORWARD}}
+
+\subsubsection*{Syntax}
+
+\begin{lstlisting}
+FAST FORWARD <delta>
+\end{lstlisting}
+
+\subsubsection*{Description}
+
+Immediately increases the current simulation time by the supplied
+non-negative delta. The current multiplier is not applied to this operation.
+Every intermediate simulation step is processed, allowing agents to act once
+per step.
+
+\subsubsection*{Example}
+
+\begin{lstlisting}
+FAST FORWARD 30
 \end{lstlisting}
 
 \subsection{\texttt{SHOW GRAPH}}

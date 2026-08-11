@@ -15,15 +15,18 @@ from mini_stock_exchange.exchange.models import (
     Trade,
 )
 from mini_stock_exchange.exchange.order_book import BookSnapshot
+from mini_stock_exchange.simulation import Simulation
 
 from .command import (
     AddInstrument,
     AddParticipant,
     CancelOrder,
     Command,
+    FastForward,
     ListInstruments,
     ListParticipants,
     PlaceOrder,
+    SetTimeMultiplier,
     ShowBook,
     ShowGraph,
     ShowParticipant,
@@ -37,6 +40,7 @@ type ExecutorResponse = (
     | AddParticipantResponse
     | ListInstrumentsResponse
     | ListParticipantsResponse
+    | FastForwardResponse
     | PlaceOrderResponse
     | CancelOrderResponse
     | ShowBookResponse
@@ -44,6 +48,7 @@ type ExecutorResponse = (
     | ShowTimeResponse
     | ShowGraphResponse
     | ShowParticipantResponse
+    | SetTimeMultiplierResponse
 )
 
 
@@ -72,6 +77,16 @@ class ListInstrumentsResponse:
 @dataclass(frozen=True, kw_only=True)
 class ListParticipantsResponse:
     participants: tuple[ParticipantSummary, ...]
+
+
+@dataclass(frozen=True, kw_only=True)
+class FastForwardResponse:
+    timestamp: Timestamp
+
+
+@dataclass(frozen=True, kw_only=True)
+class SetTimeMultiplierResponse:
+    multiplier: int
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -117,8 +132,13 @@ class GraphEntry:
 
 
 class Executor:
-    def __init__(self, exchange: Exchange) -> None:
+    def __init__(
+        self,
+        exchange: Exchange,
+        simulation: Simulation | None = None,
+    ) -> None:
         self._exchange = exchange
+        self._simulation = simulation
 
     def execute(self, command: Command) -> ExecutorResponse:
         match command:
@@ -152,6 +172,20 @@ class Executor:
                 return ListParticipantsResponse(
                     participants=self._exchange.get_participant_summaries()
                 )
+
+            case SetTimeMultiplier(multiplier=multiplier):
+                if self._simulation is None:
+                    return ErrorResponse(message="Simulation is unavailable")
+
+                self._simulation.multiplier = multiplier
+                return SetTimeMultiplierResponse(multiplier=multiplier)
+
+            case FastForward(delta=delta):
+                if self._simulation is None:
+                    return ErrorResponse(message="Simulation is unavailable")
+
+                timestamp = self._simulation.fast_forward(delta)
+                return FastForwardResponse(timestamp=timestamp)
 
             case PlaceOrder():
                 request = RequestForOrder(

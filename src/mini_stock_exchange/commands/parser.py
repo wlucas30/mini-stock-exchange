@@ -7,9 +7,11 @@ from .command import (
     AddParticipant,
     CancelOrder,
     Command,
+    FastForward,
     ListInstruments,
     ListParticipants,
     PlaceOrder,
+    SetTimeMultiplier,
     ShowBook,
     ShowGraph,
     ShowParticipant,
@@ -60,6 +62,17 @@ class Parser:
         if value <= 0:
             raise ParserError(
                 f"{name} must be positive at character position {token.position}"
+            )
+
+        return value
+
+    def _expect_nonnegative_integer(self, name: str) -> int:
+        token = self._expect(TokenType.INTEGER)
+        value = int(token.lexeme)
+
+        if value < 0:
+            raise ParserError(
+                f"{name} cannot be negative at character position {token.position}"
             )
 
         return value
@@ -162,6 +175,21 @@ class Parser:
                         raise ParserError(
                             f"Command not recognised: LIST {self._peek().lexeme}"
                         )
+
+            case TokenType.SET:
+                self._advance()
+                self._expect(TokenType.TIME)
+                self._expect(TokenType.MULTIPLIER)
+                multiplier = self._expect_nonnegative_integer("Multiplier")
+                self._expect(TokenType.END)
+                return SetTimeMultiplier(multiplier=multiplier)
+
+            case TokenType.FAST:
+                self._advance()
+                self._expect(TokenType.FORWARD)
+                delta = self._expect_nonnegative_integer("Fast-forward delta")
+                self._expect(TokenType.END)
+                return FastForward(delta=delta)
 
             case TokenType.SHOW:
                 self._advance()
