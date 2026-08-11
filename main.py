@@ -1,7 +1,6 @@
 # pyright: reportUnknownMemberType=false
 
 from pathlib import Path
-from time import time_ns
 
 from matplotlib import pyplot as plt
 
@@ -9,6 +8,7 @@ from mini_stock_exchange.configuration import seed_exchange
 from mini_stock_exchange.exchange.exchange import Exchange
 from mini_stock_exchange.interface.controller import Controller
 from mini_stock_exchange.interface.render import FigureOutput, TextOutput
+from mini_stock_exchange.simulation import Simulation, SimulationTime
 
 RED = "\033[31m"
 RESET = "\033[0m"
@@ -29,27 +29,32 @@ def display(output: TextOutput | FigureOutput) -> None:
 
 
 def main() -> None:
-    exchange = Exchange(time=time_ns)
+    simulation_time = SimulationTime()
+    exchange = Exchange(time=lambda: simulation_time.current_time)
     seed_exchange(exchange, DEFAULT_INSTRUMENTS)
-    controller = Controller(exchange)
+    simulation = Simulation(exchange, simulation_time)
+    controller = Controller(simulation)
 
     print("Mini Stock Exchange")
     print("Enter a command, or press Ctrl-D to exit.")
 
-    while True:
-        try:
-            source = input("> ")
-        except EOFError:
-            print()
-            break
-        except KeyboardInterrupt:
-            print()
-            break
+    try:
+        while True:
+            try:
+                source = input("> ")
+            except EOFError:
+                print()
+                break
+            except KeyboardInterrupt:
+                print()
+                break
 
-        if not source.strip():
-            continue
+            if not source.strip():
+                continue
 
-        display(controller.process(source))
+            display(controller.process(source))
+    finally:
+        controller.close()
 
 
 if __name__ == "__main__":

@@ -1,7 +1,9 @@
 from mini_stock_exchange.commands.command import (
     AddInstrument,
+    FastForward,
     ListInstruments,
     ListParticipants,
+    SetTimeMultiplier,
     ShowGraph,
     ShowParticipant,
     ShowTime,
@@ -10,9 +12,11 @@ from mini_stock_exchange.commands.execute import (
     AddInstrumentResponse,
     ErrorResponse,
     Executor,
+    FastForwardResponse,
     GraphEntry,
     ListInstrumentsResponse,
     ListParticipantsResponse,
+    SetTimeMultiplierResponse,
     ShowGraphResponse,
     ShowParticipantResponse,
     ShowTimeResponse,
@@ -28,6 +32,7 @@ from mini_stock_exchange.exchange.models import (
     RequestForOrder,
     Side,
 )
+from mini_stock_exchange.simulation import Simulation, SimulationTime
 
 
 def test_add_instrument_returns_the_added_instrument() -> None:
@@ -56,6 +61,31 @@ def test_show_time_returns_exchange_time() -> None:
     response = executor.execute(ShowTime())
 
     assert response == ShowTimeResponse(timestamp=123)
+
+
+def test_set_time_multiplier_updates_simulation_clock() -> None:
+    simulation_time = SimulationTime()
+    exchange = Exchange(time=lambda: simulation_time.current_time)
+    simulation = Simulation(exchange, simulation_time)
+    executor = Executor(exchange, simulation)
+
+    response = executor.execute(SetTimeMultiplier(multiplier=5))
+
+    assert response == SetTimeMultiplierResponse(multiplier=5)
+    simulation.advance()
+    assert simulation_time.current_time == 5
+
+
+def test_fast_forward_updates_simulation_clock() -> None:
+    simulation_time = SimulationTime(current_time=10)
+    exchange = Exchange(time=lambda: simulation_time.current_time)
+    simulation = Simulation(exchange, simulation_time)
+    executor = Executor(exchange, simulation)
+
+    response = executor.execute(FastForward(delta=30))
+
+    assert response == FastForwardResponse(timestamp=40)
+    assert simulation_time.current_time == 40
 
 
 def test_list_instruments_returns_registered_symbols() -> None:

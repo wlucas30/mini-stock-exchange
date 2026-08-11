@@ -39,3 +39,8 @@ At startup, `config/default_instruments.csv` creates ALPHA, BETA and GAMMA and
 places an initial sell order for 100 units of each instrument on behalf of the
 `EXCHANGE_MASTER` participant. Prices in the configuration file are integer
 ticks, where one tick is one cent.
+
+Simulation time starts at zero and advances once per real second. Use
+`SET TIME MULTIPLIER <n>` to change its speed (`0` pauses it) and
+`FAST FORWARD <delta>` to advance it immediately. Every intermediate
+simulation step is processed so agents can act at each time unit.

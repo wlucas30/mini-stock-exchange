@@ -8,16 +8,20 @@ class TokenType(Enum):
     BOOK = auto()
     BUY = auto()
     CANCEL = auto()
+    FAST = auto()
+    FORWARD = auto()
     GRAPH = auto()
     INSTR = auto()
     LIMIT = auto()
     LIST = auto()
     MARKET = auto()
+    MULTIPLIER = auto()
     ORDER = auto()
     PARTICIPANT = auto()
     PRICE = auto()
     QUANTITY = auto()
     SELL = auto()
+    SET = auto()
     SHOW = auto()
     TIME = auto()
     TRADES = auto()
@@ -33,16 +37,20 @@ KEYWORDS: dict[str, TokenType] = {
     "BOOK": TokenType.BOOK,
     "BUY": TokenType.BUY,
     "CANCEL": TokenType.CANCEL,
+    "FAST": TokenType.FAST,
+    "FORWARD": TokenType.FORWARD,
     "GRAPH": TokenType.GRAPH,
     "INSTR": TokenType.INSTR,
     "LIMIT": TokenType.LIMIT,
     "LIST": TokenType.LIST,
     "MARKET": TokenType.MARKET,
+    "MULTIPLIER": TokenType.MULTIPLIER,
     "ORDER": TokenType.ORDER,
     "PARTICIPANT": TokenType.PARTICIPANT,
     "PRICE": TokenType.PRICE,
     "QUANTITY": TokenType.QUANTITY,
     "SELL": TokenType.SELL,
+    "SET": TokenType.SET,
     "SHOW": TokenType.SHOW,
     "TIME": TokenType.TIME,
     "TRADES": TokenType.TRADES,

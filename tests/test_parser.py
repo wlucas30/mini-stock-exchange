@@ -5,9 +5,11 @@ from mini_stock_exchange.commands.command import (
     AddParticipant,
     CancelOrder,
     Command,
+    FastForward,
     ListInstruments,
     ListParticipants,
     PlaceOrder,
+    SetTimeMultiplier,
     ShowBook,
     ShowGraph,
     ShowParticipant,
@@ -30,6 +32,9 @@ def parse(source: str) -> Command:
         ("ADD PARTICIPANT ALICE", AddParticipant(participant_id="ALICE")),
         ("LIST INSTR", ListInstruments()),
         ("LIST PARTICIPANT", ListParticipants()),
+        ("SET TIME MULTIPLIER 0", SetTimeMultiplier(multiplier=0)),
+        ("SET TIME MULTIPLIER 5", SetTimeMultiplier(multiplier=5)),
+        ("FAST FORWARD 30", FastForward(delta=30)),
         (
             "AS ALICE BUY AAPL MARKET QUANTITY 5",
             PlaceOrder(
@@ -123,6 +128,8 @@ def test_rejects_nonpositive_integers(source: str, message: str) -> None:
         "SHOW PARTICIPANT",
         "SHOW UNKNOWN",
         "LIST UNKNOWN",
+        "SET TIME 2",
+        "FAST 10",
     ],
 )
 def test_rejects_incomplete_or_unknown_commands(source: str) -> None:
@@ -138,6 +145,8 @@ def test_rejects_incomplete_or_unknown_commands(source: str) -> None:
         "AS ALICE BUY AAPL MARKET QUANTITY 5 EXTRA",
         "SHOW TIME EXTRA",
         "LIST INSTR EXTRA",
+        "SET TIME MULTIPLIER 2 EXTRA",
+        "FAST FORWARD 10 EXTRA",
     ],
 )
 def test_rejects_trailing_tokens(source: str) -> None:
