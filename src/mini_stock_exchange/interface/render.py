@@ -14,10 +14,12 @@ from mini_stock_exchange.commands.execute import (
     CancelOrderResponse,
     ErrorResponse,
     ExecutorResponse,
+    FastForwardResponse,
     GraphEntry,
     ListInstrumentsResponse,
     ListParticipantsResponse,
     PlaceOrderResponse,
+    SetTimeMultiplierResponse,
     ShowBookResponse,
     ShowGraphResponse,
     ShowParticipantResponse,
@@ -96,6 +98,12 @@ class Renderer:
 
             case CancelOrderResponse(order_id=order_id):
                 return TextOutput(text=f"Successfully cancelled order {order_id}")
+
+            case SetTimeMultiplierResponse(multiplier=multiplier):
+                return TextOutput(text=f"Time multiplier set to {multiplier}")
+
+            case FastForwardResponse(timestamp=timestamp):
+                return TextOutput(text=f"Current time: {timestamp}")
 
             case ListInstrumentsResponse(symbols=symbols):
                 table = tabulate(

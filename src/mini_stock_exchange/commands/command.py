@@ -9,6 +9,7 @@ from mini_stock_exchange.exchange.models import (
     Quantity,
     Side,
     Symbol,
+    Timestamp,
 )
 
 type Command = (
@@ -16,6 +17,7 @@ type Command = (
     | AddParticipant
     | ListInstruments
     | ListParticipants
+    | FastForward
     | PlaceOrder
     | CancelOrder
     | ShowBook
@@ -23,6 +25,7 @@ type Command = (
     | ShowTime
     | ShowGraph
     | ShowParticipant
+    | SetTimeMultiplier
 )
 
 
@@ -44,6 +47,16 @@ class ListInstruments:
 @dataclass(frozen=True, kw_only=True)
 class ListParticipants:
     pass
+
+
+@dataclass(frozen=True, kw_only=True)
+class FastForward:
+    delta: Timestamp
+
+
+@dataclass(frozen=True, kw_only=True)
+class SetTimeMultiplier:
+    multiplier: int
 
 
 @dataclass(frozen=True, kw_only=True)
