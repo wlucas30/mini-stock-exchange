@@ -28,7 +28,10 @@ def parse(source: str) -> Command:
 @pytest.mark.parametrize(
     ("source", "expected"),
     [
-        ("ADD INSTR AAPL", AddInstrument(symbol="AAPL")),
+        (
+            "ADD INSTR AAPL PRICE 10000 VOLUME 100",
+            AddInstrument(symbol="AAPL", price_ticks=10000, volume=100),
+        ),
         ("ADD PARTICIPANT ALICE", AddParticipant(participant_id="ALICE")),
         ("LIST INSTR", ListInstruments()),
         ("LIST PARTICIPANT", ListParticipants()),
@@ -109,6 +112,14 @@ def test_parses_commands(source: str, expected: Command) -> None:
             "Price must be positive",
         ),
         ("AS ALICE CANCEL ORDER 0", "Order ID must be positive"),
+        (
+            "ADD INSTR AAPL PRICE 0 VOLUME 100",
+            "Price must be positive",
+        ),
+        (
+            "ADD INSTR AAPL PRICE 10000 VOLUME 0",
+            "Volume must be positive",
+        ),
     ],
 )
 def test_rejects_nonpositive_integers(source: str, message: str) -> None:
@@ -121,6 +132,8 @@ def test_rejects_nonpositive_integers(source: str, message: str) -> None:
     [
         "",
         "ADD AAPL",
+        "ADD INSTR AAPL",
+        "ADD INSTR AAPL PRICE 10000",
         "AS ALICE BUY AAPL",
         "AS ALICE BUY AAPL LIMIT 100 QUANTITY 5",
         "AS ALICE BUY AAPL MARKET 5",
@@ -140,7 +153,7 @@ def test_rejects_incomplete_or_unknown_commands(source: str) -> None:
 @pytest.mark.parametrize(
     "source",
     [
-        "ADD INSTR AAPL EXTRA",
+        "ADD INSTR AAPL PRICE 10000 VOLUME 100 EXTRA",
         "AS ALICE CANCEL ORDER 42 EXTRA",
         "AS ALICE BUY AAPL MARKET QUANTITY 5 EXTRA",
         "SHOW TIME EXTRA",

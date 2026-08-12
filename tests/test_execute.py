@@ -21,6 +21,10 @@ from mini_stock_exchange.commands.execute import (
     ShowParticipantResponse,
     ShowTimeResponse,
 )
+from mini_stock_exchange.configuration import (
+    EXCHANGE_MASTER_ID,
+    EXCHANGE_MASTER_NAME,
+)
 from mini_stock_exchange.exchange.exchange import Exchange
 from mini_stock_exchange.exchange.models import (
     Instrument,
@@ -37,19 +41,40 @@ from mini_stock_exchange.simulation import Simulation, SimulationTime
 
 def test_add_instrument_returns_the_added_instrument() -> None:
     exchange = Exchange(time=lambda: 100)
+    exchange.add_participant(
+        Participant(EXCHANGE_MASTER_ID, EXCHANGE_MASTER_NAME, balance=0)
+    )
     executor = Executor(exchange)
 
-    response = executor.execute(AddInstrument(symbol="AAPL"))
+    response = executor.execute(
+        AddInstrument(symbol="AAPL", price_ticks=10000, volume=100)
+    )
 
-    assert response == AddInstrumentResponse(instrument=Instrument(symbol="AAPL"))
+    assert response == AddInstrumentResponse(
+        instrument=Instrument(symbol="AAPL"),
+        price_ticks=10000,
+        volume=100,
+        initial_order_id=1,
+    )
+    ask = exchange.get_book_snapshot("AAPL").asks[0]
+    assert ask.participant_id == EXCHANGE_MASTER_ID
+    assert ask.price_ticks == 10000
+    assert ask.remaining_quantity == 100
+    master = exchange.get_participant_details(EXCHANGE_MASTER_ID)
+    assert master.positions[0].available_quantity == 0
+    assert master.positions[0].reserved_quantity == 100
 
 
 def test_add_duplicate_instrument_returns_error() -> None:
     exchange = Exchange(time=lambda: 100)
+    exchange.add_participant(
+        Participant(EXCHANGE_MASTER_ID, EXCHANGE_MASTER_NAME, balance=0)
+    )
     executor = Executor(exchange)
-    executor.execute(AddInstrument(symbol="AAPL"))
+    command = AddInstrument(symbol="AAPL", price_ticks=10000, volume=100)
+    executor.execute(command)
 
-    response = executor.execute(AddInstrument(symbol="AAPL"))
+    response = executor.execute(command)
 
     assert isinstance(response, ErrorResponse)
     assert response.message.startswith("Failed to add instrument:")

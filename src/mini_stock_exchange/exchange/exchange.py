@@ -12,6 +12,7 @@ from .models import (
     ParticipantId,
     ParticipantPositionSummary,
     ParticipantSummary,
+    PriceTicks,
     Quantity,
     RequestForOrder,
     Sequence,
@@ -349,6 +350,38 @@ class Exchange:
 
         self._instruments[instrument.symbol] = instrument
         self._order_books[instrument.symbol] = OrderBook(instrument)
+
+    def issue_instrument(
+        self,
+        instrument: Instrument,
+        issuer_id: ParticipantId,
+        price_ticks: PriceTicks,
+        volume: Quantity,
+    ) -> Order:
+        """Register an instrument and list its issued volume for sale."""
+        if issuer_id not in self._participants:
+            raise ValueError(f"Participant {issuer_id} does not exist")
+        if price_ticks <= 0:
+            raise ValueError("Issue price must be positive")
+        if volume <= 0:
+            raise ValueError("Issue volume must be positive")
+
+        self.add_instrument(instrument)
+        issuer = self._participants[issuer_id]
+        issuer.positions[instrument.symbol] = (
+            issuer.positions.get(instrument.symbol, 0) + volume
+        )
+
+        return self.place_order(
+            RequestForOrder(
+                participant_id=issuer_id,
+                symbol=instrument.symbol,
+                side=Side.SELL,
+                order_type=OrderType.LIMIT,
+                original_quantity=volume,
+                price_ticks=price_ticks,
+            )
+        )
 
     def add_participant(self, participant: Participant) -> None:
         """Adds a participant to the exchange."""

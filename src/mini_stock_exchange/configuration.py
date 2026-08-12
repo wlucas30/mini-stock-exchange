@@ -6,12 +6,9 @@ from mini_stock_exchange.commands.lexer import KEYWORDS, is_identifier
 from mini_stock_exchange.exchange.exchange import Exchange
 from mini_stock_exchange.exchange.models import (
     Instrument,
-    OrderType,
     Participant,
     PriceTicks,
     Quantity,
-    RequestForOrder,
-    Side,
     Symbol,
 )
 
@@ -90,22 +87,15 @@ def seed_exchange(exchange: Exchange, path: Path) -> None:
         participant_id=EXCHANGE_MASTER_ID,
         display_name=EXCHANGE_MASTER_NAME,
         balance=0,
-        positions={
-            instrument.symbol: instrument.initial_quantity for instrument in instruments
-        },
+        positions={},
     )
 
     exchange.add_participant(exchange_master)
 
     for instrument in instruments:
-        exchange.add_instrument(Instrument(symbol=instrument.symbol))
-        exchange.place_order(
-            RequestForOrder(
-                participant_id=EXCHANGE_MASTER_ID,
-                symbol=instrument.symbol,
-                side=Side.SELL,
-                order_type=OrderType.LIMIT,
-                original_quantity=instrument.initial_quantity,
-                price_ticks=instrument.starting_price_ticks,
-            )
+        exchange.issue_instrument(
+            instrument=Instrument(symbol=instrument.symbol),
+            issuer_id=EXCHANGE_MASTER_ID,
+            price_ticks=instrument.starting_price_ticks,
+            volume=instrument.initial_quantity,
         )
