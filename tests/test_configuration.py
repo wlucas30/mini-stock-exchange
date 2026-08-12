@@ -65,13 +65,13 @@ def test_seed_exchange_adds_instruments_master_and_initial_asks(
             symbol="ALPHA",
             fundamental_value_ticks=1000,
             sentiment=Sentiment.NEUTRAL,
-            volatility=1.0,
+            volatility=0.001,
         ),
         MarketState(
             symbol="BETA",
             fundamental_value_ticks=2000,
             sentiment=Sentiment.NEUTRAL,
-            volatility=2.0,
+            volatility=0.001,
         ),
     )
 

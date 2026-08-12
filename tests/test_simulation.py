@@ -109,7 +109,7 @@ def test_issue_instrument_creates_hidden_market_state() -> None:
             symbol="AAPL",
             fundamental_value_ticks=10_000,
             sentiment=Sentiment.NEUTRAL,
-            volatility=10.0,
+            volatility=0.001,
         )
     }
 

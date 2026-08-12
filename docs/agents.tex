@@ -45,9 +45,9 @@ together.
 
 When an instrument is first issued, its initial fundamental value is the issue
 price supplied for its initial sell order. It begins in a neutral sentiment
-regime. Its initial volatility is proportional to that price, subject to a
-minimum of one tick. These defaults provide a complete hidden state without
-requiring additional instrument-creation parameters.
+regime. Its initial volatility is 0.1 per cent. These defaults provide a
+complete hidden state without requiring additional instrument-creation
+parameters.
 
 \subsection{Sentiment}
 
@@ -66,6 +66,10 @@ recognisable trends to develop instead of selecting an unrelated direction on
 every simulation step. Regime changes remain uncertain and may reverse an
 existing trend.
 
+On each simulation step there is a small possibility that an instrument moves
+to a different sentiment regime. Most steps retain the current regime, allowing
+market conditions to remain persistent.
+
 Sentiment does not mean that every agent automatically buys or sells in the
 same direction. It affects the underlying environment, while agents interpret
 available information according to their own strategies.
@@ -80,6 +84,12 @@ Random movement prevents the market from following a perfectly predictable
 path. Sentiment supplies directional pressure, but volatility and random shocks
 mean that a bullish instrument may fall on a particular step and a bearish
 instrument may temporarily rise.
+
+Volatility is represented as a proportion of fundamental value rather than a
+fixed number of ticks. It fluctuates gradually on every simulation step within
+bounded limits. Fundamental value then receives a random percentage movement,
+with bullish or bearish sentiment biasing the likely direction. Fundamental
+value is always kept at or above one tick.
 
 The simulator does not require reproducible random outcomes. Separate runs may
 produce completely different price histories even when they begin with the

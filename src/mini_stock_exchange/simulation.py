@@ -1,3 +1,4 @@
+import random
 from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import Enum, auto
@@ -21,6 +22,14 @@ class Sentiment(Enum):
     BULLISH = auto()
 
 
+SENTIMENT_CHANGE_PROBABILITY = 0.02
+MIN_VOLATILITY = 0.0001
+MAX_VOLATILITY = 0.05
+MIN_VOLATILITY_FACTOR = 0.9
+MAX_VOLATILITY_FACTOR = 1.1
+SENTIMENT_BIAS_FACTOR = 0.25
+
+
 @dataclass(kw_only=True)
 class MarketState:
     """Hidden simulation state for one instrument."""
@@ -36,6 +45,33 @@ class MarketState:
         if self.volatility < 0:
             raise ValueError("Volatility cannot be negative")
 
+    def step(self) -> None:
+        """Randomly evolve sentiment, volatility, and fundamental value."""
+        if random.random() < SENTIMENT_CHANGE_PROBABILITY:
+            alternatives = tuple(
+                sentiment for sentiment in Sentiment if sentiment is not self.sentiment
+            )
+            self.sentiment = random.choice(alternatives)
+
+        volatility_factor = random.uniform(
+            MIN_VOLATILITY_FACTOR,
+            MAX_VOLATILITY_FACTOR,
+        )
+        self.volatility = min(
+            MAX_VOLATILITY,
+            max(MIN_VOLATILITY, self.volatility * volatility_factor),
+        )
+
+        sentiment_direction = {
+            Sentiment.BEARISH: -1,
+            Sentiment.NEUTRAL: 0,
+            Sentiment.BULLISH: 1,
+        }[self.sentiment]
+        mean_movement = sentiment_direction * self.volatility * SENTIMENT_BIAS_FACTOR
+        percentage_movement = random.gauss(mean_movement, self.volatility)
+        new_value = round(self.fundamental_value_ticks * (1 + percentage_movement))
+        self.fundamental_value_ticks = max(1, new_value)
+
 
 def make_initial_market_state(
     symbol: Symbol,
@@ -46,7 +82,7 @@ def make_initial_market_state(
         symbol=symbol,
         fundamental_value_ticks=fundamental_value_ticks,
         sentiment=Sentiment.NEUTRAL,
-        volatility=max(1.0, fundamental_value_ticks * 0.001),
+        volatility=0.001,
     )
 
 
@@ -161,6 +197,8 @@ class Simulation:
     def step(self) -> Timestamp:
         """Advance one unit and give every agent one opportunity to act."""
         timestamp = self._time.step()
+        for market_state in self._market_states.values():
+            market_state.step()
         for agent in self._agents:
             agent.act(self._exchange, timestamp)
         return timestamp
