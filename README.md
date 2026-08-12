@@ -44,3 +44,7 @@ Simulation time starts at zero and advances once per real second. Use
 `SET TIME MULTIPLIER <n>` to change its speed (`0` pauses it) and
 `FAST FORWARD <delta>` to advance it immediately. Every intermediate
 simulation step is processed so agents can act at each time unit.
+
+Each instrument also has hidden simulation state. Its initial fundamental
+value is its issue price, its initial sentiment is neutral, and its initial
+volatility is 0.1% of that price with a minimum of one tick.

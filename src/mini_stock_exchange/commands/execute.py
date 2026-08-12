@@ -155,7 +155,10 @@ class Executor:
                 instrument = Instrument(symbol=symbol)
 
                 try:
-                    order = self._exchange.issue_instrument(
+                    if self._simulation is None:
+                        return ErrorResponse(message="Simulation is unavailable")
+
+                    order = self._simulation.issue_instrument(
                         instrument=instrument,
                         issuer_id=EXCHANGE_MASTER_ID,
                         price_ticks=price_ticks,

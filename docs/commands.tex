@@ -254,6 +254,11 @@ The issued volume is credited to the \texttt{EXCHANGE\_MASTER} participant and
 immediately placed for sale as a limit order at the supplied price. This gives
 the new instrument an initial ask from which other participants can buy.
 
+The supplied price also becomes the instrument's initial hidden fundamental
+value. Its initial sentiment is neutral and its initial volatility is derived
+from that price. Hidden market state is maintained by the simulation and is
+not exposed through the exchange's public order book.
+
 \subsubsection*{Example}
 
 \begin{lstlisting}

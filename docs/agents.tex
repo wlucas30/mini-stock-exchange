@@ -43,6 +43,12 @@ exchange. Consequently, the traded price may be above or below fundamental
 value, and it may take time for market activity to move the two closer
 together.
 
+When an instrument is first issued, its initial fundamental value is the issue
+price supplied for its initial sell order. It begins in a neutral sentiment
+regime. Its initial volatility is proportional to that price, subject to a
+minimum of one tick. These defaults provide a complete hidden state without
+requiring additional instrument-creation parameters.
+
 \subsection{Sentiment}
 
 Each instrument has a sentiment regime, such as bullish, neutral,

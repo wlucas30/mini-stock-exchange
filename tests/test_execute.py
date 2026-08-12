@@ -40,11 +40,13 @@ from mini_stock_exchange.simulation import Simulation, SimulationTime
 
 
 def test_add_instrument_returns_the_added_instrument() -> None:
-    exchange = Exchange(time=lambda: 100)
+    simulation_time = SimulationTime(current_time=100)
+    exchange = Exchange(time=lambda: simulation_time.current_time)
     exchange.add_participant(
         Participant(EXCHANGE_MASTER_ID, EXCHANGE_MASTER_NAME, balance=0)
     )
-    executor = Executor(exchange)
+    simulation = Simulation(exchange, simulation_time)
+    executor = Executor(exchange, simulation)
 
     response = executor.execute(
         AddInstrument(symbol="AAPL", price_ticks=10000, volume=100)
@@ -66,11 +68,13 @@ def test_add_instrument_returns_the_added_instrument() -> None:
 
 
 def test_add_duplicate_instrument_returns_error() -> None:
-    exchange = Exchange(time=lambda: 100)
+    simulation_time = SimulationTime(current_time=100)
+    exchange = Exchange(time=lambda: simulation_time.current_time)
     exchange.add_participant(
         Participant(EXCHANGE_MASTER_ID, EXCHANGE_MASTER_NAME, balance=0)
     )
-    executor = Executor(exchange)
+    simulation = Simulation(exchange, simulation_time)
+    executor = Executor(exchange, simulation)
     command = AddInstrument(symbol="AAPL", price_ticks=10000, volume=100)
     executor.execute(command)
 

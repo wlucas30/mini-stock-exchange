@@ -31,8 +31,12 @@ def display(output: TextOutput | FigureOutput) -> None:
 def main() -> None:
     simulation_time = SimulationTime()
     exchange = Exchange(time=lambda: simulation_time.current_time)
-    seed_exchange(exchange, DEFAULT_INSTRUMENTS)
-    simulation = Simulation(exchange, simulation_time)
+    market_states = seed_exchange(exchange, DEFAULT_INSTRUMENTS)
+    simulation = Simulation(
+        exchange,
+        simulation_time,
+        market_states=market_states,
+    )
     controller = Controller(simulation)
 
     print("Mini Stock Exchange")

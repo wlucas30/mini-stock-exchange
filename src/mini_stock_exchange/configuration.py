@@ -11,6 +11,7 @@ from mini_stock_exchange.exchange.models import (
     Quantity,
     Symbol,
 )
+from mini_stock_exchange.simulation import MarketState, make_initial_market_state
 
 EXCHANGE_MASTER_ID = "EXCHANGE_MASTER"
 EXCHANGE_MASTER_NAME = "Exchange Master"
@@ -80,7 +81,7 @@ def read_default_instruments(path: Path) -> tuple[DefaultInstrument, ...]:
     return tuple(instruments)
 
 
-def seed_exchange(exchange: Exchange, path: Path) -> None:
+def seed_exchange(exchange: Exchange, path: Path) -> tuple[MarketState, ...]:
     """Add configured instruments and initial Exchange Master sell orders."""
     instruments = read_default_instruments(path)
     exchange_master = Participant(
@@ -92,6 +93,7 @@ def seed_exchange(exchange: Exchange, path: Path) -> None:
 
     exchange.add_participant(exchange_master)
 
+    market_states: list[MarketState] = []
     for instrument in instruments:
         exchange.issue_instrument(
             instrument=Instrument(symbol=instrument.symbol),
@@ -99,3 +101,11 @@ def seed_exchange(exchange: Exchange, path: Path) -> None:
             price_ticks=instrument.starting_price_ticks,
             volume=instrument.initial_quantity,
         )
+        market_states.append(
+            make_initial_market_state(
+                symbol=instrument.symbol,
+                fundamental_value_ticks=instrument.starting_price_ticks,
+            )
+        )
+
+    return tuple(market_states)
