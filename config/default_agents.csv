@@ -1,0 +1,4 @@
+participant_id,display_name,balance,strategy
+NOISE_1,Noise Trader 1,1000000,RandomNoise
+NOISE_2,Noise Trader 2,1000000,RandomNoise
+NOISE_3,Noise Trader 3,1000000,RandomNoise

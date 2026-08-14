@@ -1,8 +1,89 @@
+import random
 from collections.abc import Iterable
+from dataclasses import dataclass
+from enum import Enum, auto
 from typing import Protocol
 
 from mini_stock_exchange.exchange.exchange import Exchange
-from mini_stock_exchange.exchange.models import Timestamp
+from mini_stock_exchange.exchange.models import (
+    Instrument,
+    Order,
+    ParticipantId,
+    PriceTicks,
+    Quantity,
+    Symbol,
+    Timestamp,
+)
+
+
+class Sentiment(Enum):
+    BEARISH = auto()
+    NEUTRAL = auto()
+    BULLISH = auto()
+
+
+SENTIMENT_CHANGE_PROBABILITY = 0.02
+MIN_VOLATILITY = 0.0001
+MAX_VOLATILITY = 0.05
+MIN_VOLATILITY_FACTOR = 0.9
+MAX_VOLATILITY_FACTOR = 1.1
+SENTIMENT_BIAS_FACTOR = 0.25
+
+
+@dataclass(kw_only=True)
+class MarketState:
+    """Hidden simulation state for one instrument."""
+
+    symbol: Symbol
+    fundamental_value_ticks: PriceTicks
+    sentiment: Sentiment
+    volatility: float
+
+    def __post_init__(self) -> None:
+        if self.fundamental_value_ticks <= 0:
+            raise ValueError("Fundamental value must be positive")
+        if self.volatility < 0:
+            raise ValueError("Volatility cannot be negative")
+
+    def step(self) -> None:
+        """Randomly evolve sentiment, volatility, and fundamental value."""
+        if random.random() < SENTIMENT_CHANGE_PROBABILITY:
+            alternatives = tuple(
+                sentiment for sentiment in Sentiment if sentiment is not self.sentiment
+            )
+            self.sentiment = random.choice(alternatives)
+
+        volatility_factor = random.uniform(
+            MIN_VOLATILITY_FACTOR,
+            MAX_VOLATILITY_FACTOR,
+        )
+        self.volatility = min(
+            MAX_VOLATILITY,
+            max(MIN_VOLATILITY, self.volatility * volatility_factor),
+        )
+
+        sentiment_direction = {
+            Sentiment.BEARISH: -1,
+            Sentiment.NEUTRAL: 0,
+            Sentiment.BULLISH: 1,
+        }[self.sentiment]
+        mean_movement = sentiment_direction * self.volatility * SENTIMENT_BIAS_FACTOR
+        percentage_movement = random.gauss(mean_movement, self.volatility)
+        new_value = round(self.fundamental_value_ticks * (1 + percentage_movement))
+        self.fundamental_value_ticks = max(1, new_value)
+
+
+def make_initial_market_state(
+    symbol: Symbol,
+    fundamental_value_ticks: PriceTicks,
+) -> MarketState:
+    """Create neutral hidden state using the standard initial volatility."""
+    return MarketState(
+        symbol=symbol,
+        fundamental_value_ticks=fundamental_value_ticks,
+        sentiment=Sentiment.NEUTRAL,
+        volatility=0.001,
+    )
 
 
 class SimulationTime:
@@ -51,10 +132,28 @@ class Simulation:
         exchange: Exchange,
         simulation_time: SimulationTime,
         agents: Iterable[SimulationAgent] = (),
+        market_states: Iterable[MarketState] = (),
     ) -> None:
         self._exchange = exchange
         self._time = simulation_time
         self._agents = list(agents)
+        self._market_states: dict[Symbol, MarketState] = {}
+
+        for market_state in market_states:
+            if market_state.symbol in self._market_states:
+                raise ValueError(f"Duplicate market state for {market_state.symbol}")
+            if market_state.symbol not in exchange.get_instrument_symbols():
+                raise ValueError(
+                    f"Market state symbol {market_state.symbol} does not exist"
+                )
+            self._market_states[market_state.symbol] = market_state
+
+        missing_states = (
+            set(exchange.get_instrument_symbols()) - self._market_states.keys()
+        )
+        if missing_states:
+            missing = ", ".join(sorted(missing_states))
+            raise ValueError(f"Missing market state for instrument(s): {missing}")
 
     @property
     def exchange(self) -> Exchange:
@@ -72,9 +171,34 @@ class Simulation:
     def multiplier(self, value: int) -> None:
         self._time.multiplier = value
 
+    def issue_instrument(
+        self,
+        instrument: Instrument,
+        issuer_id: ParticipantId,
+        price_ticks: PriceTicks,
+        volume: Quantity,
+    ) -> Order:
+        """Issue an instrument and create its initial hidden market state."""
+        if instrument.symbol in self._market_states:
+            raise ValueError(f"Market state already exists: {instrument.symbol}")
+
+        order = self._exchange.issue_instrument(
+            instrument=instrument,
+            issuer_id=issuer_id,
+            price_ticks=price_ticks,
+            volume=volume,
+        )
+        self._market_states[instrument.symbol] = make_initial_market_state(
+            symbol=instrument.symbol,
+            fundamental_value_ticks=price_ticks,
+        )
+        return order
+
     def step(self) -> Timestamp:
         """Advance one unit and give every agent one opportunity to act."""
         timestamp = self._time.step()
+        for market_state in self._market_states.values():
+            market_state.step()
         for agent in self._agents:
             agent.act(self._exchange, timestamp)
         return timestamp

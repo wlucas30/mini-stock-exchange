@@ -235,3 +235,11 @@ class ParticipantDetails:
     @property
     def total_cash(self) -> Cash:
         return self.available_cash + self.reserved_cash
+
+
+@dataclass(frozen=True, kw_only=True)
+class ActiveOrderSummary:
+    """An immutable view of an active order owned by a participant."""
+
+    order_id: OrderId
+    timestamp: Timestamp

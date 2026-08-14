@@ -32,6 +32,8 @@ type Command = (
 @dataclass(frozen=True, kw_only=True)
 class AddInstrument:
     symbol: Symbol
+    price_ticks: PriceTicks
+    volume: Quantity
 
 
 @dataclass(frozen=True, kw_only=True)

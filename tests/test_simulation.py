@@ -1,10 +1,17 @@
+# pyright: reportPrivateUsage=false
+
 from collections.abc import Callable
 
 import pytest
 
 from mini_stock_exchange.exchange.exchange import Exchange
-from mini_stock_exchange.exchange.models import Timestamp
-from mini_stock_exchange.simulation import Simulation, SimulationTime
+from mini_stock_exchange.exchange.models import Instrument, Participant, Timestamp
+from mini_stock_exchange.simulation import (
+    MarketState,
+    Sentiment,
+    Simulation,
+    SimulationTime,
+)
 
 
 class RecordingAgent:
@@ -82,6 +89,38 @@ def test_fast_forward_runs_every_intermediate_step() -> None:
 
     assert result == 13
     assert agent.timestamps == [11, 12, 13]
+
+
+def test_issue_instrument_creates_hidden_market_state() -> None:
+    simulation, _ = make_simulation()
+    simulation.exchange.add_participant(
+        Participant("EXCHANGE_MASTER", "Exchange Master", balance=0)
+    )
+
+    simulation.issue_instrument(
+        instrument=Instrument(symbol="AAPL"),
+        issuer_id="EXCHANGE_MASTER",
+        price_ticks=10_000,
+        volume=100,
+    )
+
+    assert simulation._market_states == {
+        "AAPL": MarketState(
+            symbol="AAPL",
+            fundamental_value_ticks=10_000,
+            sentiment=Sentiment.NEUTRAL,
+            volatility=0.001,
+        )
+    }
+
+
+def test_simulation_requires_market_state_for_existing_instrument() -> None:
+    simulation_time = SimulationTime()
+    exchange = Exchange(time=lambda: simulation_time.current_time)
+    exchange.add_instrument(Instrument(symbol="AAPL"))
+
+    with pytest.raises(ValueError, match="Missing market state for instrument"):
+        Simulation(exchange, simulation_time)
 
 
 @pytest.mark.parametrize(
