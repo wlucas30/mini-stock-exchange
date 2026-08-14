@@ -482,3 +482,41 @@ class Exchange:
             reserved_cash=reserved_cash,
             positions=positions,
         )
+
+    def count_participant_active_orders(
+        self,
+        participant_id: ParticipantId,
+    ) -> int:
+        """Return the number of active orders held by one participant."""
+        return sum(
+            1
+            for order in self._active_orders.values()
+            if order.participant_id == participant_id
+        )
+
+    def get_reference_price(self, symbol: Symbol) -> PriceTicks | None:
+        """Determine a reference price for a given symbol. Returns the midpoint
+        when active BUY and SELL orders exist. Otherwise, returns the best bid
+        or ask, or the last traded price, in that order of priority. Returns
+        None if no price is available."""
+
+        book: BookSnapshot = self.get_book_snapshot(symbol)
+
+        if len(book.bids) > 0 and len(book.asks) > 0:
+            # Midpoint
+            return (book.bids[0].price_ticks + book.asks[0].price_ticks) // 2
+
+        if len(book.bids) > 0:
+            # Best bid
+            return book.bids[0].price_ticks
+
+        if len(book.asks) > 0:
+            # Best ask
+            return book.asks[0].price_ticks
+
+        trades: tuple[Trade, ...] = self.get_trades_by_symbol(symbol)
+        if len(trades) > 0:
+            # Last traded price
+            return trades[-1].price_ticks
+
+        return None
