@@ -1,6 +1,7 @@
 from collections.abc import Callable
 
 from .models import (
+    ActiveOrderSummary,
     Cash,
     Instrument,
     Order,
@@ -343,6 +344,15 @@ class Exchange:
         self._release_reservation(order)
         del self._active_orders[order_id]
 
+    def cancel_participant_order(
+        self,
+        participant_id: ParticipantId,
+        order_id: OrderId,
+    ) -> None:
+        """Cancel an active order after verifying that the participant owns it."""
+        self.require_order_ownership(participant_id, order_id)
+        self.cancel_order(order_id)
+
     def add_instrument(self, instrument: Instrument) -> None:
         """Adds an instrument to the exchange."""
         if instrument.symbol in self._instruments:
@@ -490,6 +500,23 @@ class Exchange:
         """Return the number of active orders held by one participant."""
         return sum(
             1
+            for order in self._active_orders.values()
+            if order.participant_id == participant_id
+        )
+
+    def get_participant_active_orders(
+        self,
+        participant_id: ParticipantId,
+    ) -> tuple[ActiveOrderSummary, ...]:
+        """Return immutable summaries of one participant's active orders."""
+        if participant_id not in self._participants:
+            raise ValueError(f"Participant {participant_id} does not exist")
+
+        return tuple(
+            ActiveOrderSummary(
+                order_id=order.order_id,
+                timestamp=order.timestamp,
+            )
             for order in self._active_orders.values()
             if order.participant_id == participant_id
         )
