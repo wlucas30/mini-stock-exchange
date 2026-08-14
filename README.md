@@ -40,7 +40,16 @@ places an initial sell order for 100 units of each instrument on behalf of the
 `EXCHANGE_MASTER` participant. Prices in the configuration file are integer
 ticks, where one tick is one cent.
 
+`config/default_agents.csv` creates the simulation's automated traders and
+gives each one its configured starting cash balance and strategy. The default
+configuration starts three `RandomNoise` traders with $10,000 each.
+
 Simulation time starts at zero and advances once per real second. Use
 `SET TIME MULTIPLIER <n>` to change its speed (`0` pauses it) and
 `FAST FORWARD <delta>` to advance it immediately. Every intermediate
 simulation step is processed so agents can act at each time unit.
+
+Each instrument also has hidden simulation state. Its initial fundamental
+value is its issue price, its initial sentiment is neutral, and its initial
+volatility is 0.1%. Each simulation step may change sentiment, varies
+volatility, and applies a sentiment-biased random movement to fundamental value.

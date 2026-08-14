@@ -25,6 +25,7 @@ class TokenType(Enum):
     SHOW = auto()
     TIME = auto()
     TRADES = auto()
+    VOLUME = auto()
 
     IDENTIFIER = auto()
     INTEGER = auto()
@@ -54,6 +55,7 @@ KEYWORDS: dict[str, TokenType] = {
     "SHOW": TokenType.SHOW,
     "TIME": TokenType.TIME,
     "TRADES": TokenType.TRADES,
+    "VOLUME": TokenType.VOLUME,
 }
 
 

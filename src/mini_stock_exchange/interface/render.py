@@ -81,9 +81,18 @@ class Renderer:
             case ErrorResponse(message=message):
                 return TextOutput(text=f"ERROR: {message}", red=True)
 
-            case AddInstrumentResponse(instrument=instrument):
+            case AddInstrumentResponse(
+                instrument=instrument,
+                price_ticks=price_ticks,
+                volume=volume,
+                initial_order_id=initial_order_id,
+            ):
                 return TextOutput(
-                    text=f"Successfully added instrument {instrument.symbol}."
+                    text=(
+                        f"Successfully added instrument {instrument.symbol} and "
+                        f"listed {volume} units at {price_ticks} ticks "
+                        f"with order ID {initial_order_id}."
+                    )
                 )
 
             case AddParticipantResponse(participant=participant):

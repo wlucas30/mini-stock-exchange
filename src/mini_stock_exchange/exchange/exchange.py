@@ -1,6 +1,7 @@
 from collections.abc import Callable
 
 from .models import (
+    ActiveOrderSummary,
     Cash,
     Instrument,
     Order,
@@ -12,6 +13,7 @@ from .models import (
     ParticipantId,
     ParticipantPositionSummary,
     ParticipantSummary,
+    PriceTicks,
     Quantity,
     RequestForOrder,
     Sequence,
@@ -342,6 +344,15 @@ class Exchange:
         self._release_reservation(order)
         del self._active_orders[order_id]
 
+    def cancel_participant_order(
+        self,
+        participant_id: ParticipantId,
+        order_id: OrderId,
+    ) -> None:
+        """Cancel an active order after verifying that the participant owns it."""
+        self.require_order_ownership(participant_id, order_id)
+        self.cancel_order(order_id)
+
     def add_instrument(self, instrument: Instrument) -> None:
         """Adds an instrument to the exchange."""
         if instrument.symbol in self._instruments:
@@ -349,6 +360,38 @@ class Exchange:
 
         self._instruments[instrument.symbol] = instrument
         self._order_books[instrument.symbol] = OrderBook(instrument)
+
+    def issue_instrument(
+        self,
+        instrument: Instrument,
+        issuer_id: ParticipantId,
+        price_ticks: PriceTicks,
+        volume: Quantity,
+    ) -> Order:
+        """Register an instrument and list its issued volume for sale."""
+        if issuer_id not in self._participants:
+            raise ValueError(f"Participant {issuer_id} does not exist")
+        if price_ticks <= 0:
+            raise ValueError("Issue price must be positive")
+        if volume <= 0:
+            raise ValueError("Issue volume must be positive")
+
+        self.add_instrument(instrument)
+        issuer = self._participants[issuer_id]
+        issuer.positions[instrument.symbol] = (
+            issuer.positions.get(instrument.symbol, 0) + volume
+        )
+
+        return self.place_order(
+            RequestForOrder(
+                participant_id=issuer_id,
+                symbol=instrument.symbol,
+                side=Side.SELL,
+                order_type=OrderType.LIMIT,
+                original_quantity=volume,
+                price_ticks=price_ticks,
+            )
+        )
 
     def add_participant(self, participant: Participant) -> None:
         """Adds a participant to the exchange."""
@@ -449,3 +492,58 @@ class Exchange:
             reserved_cash=reserved_cash,
             positions=positions,
         )
+
+    def count_participant_active_orders(
+        self,
+        participant_id: ParticipantId,
+    ) -> int:
+        """Return the number of active orders held by one participant."""
+        return sum(
+            1
+            for order in self._active_orders.values()
+            if order.participant_id == participant_id
+        )
+
+    def get_participant_active_orders(
+        self,
+        participant_id: ParticipantId,
+    ) -> tuple[ActiveOrderSummary, ...]:
+        """Return immutable summaries of one participant's active orders."""
+        if participant_id not in self._participants:
+            raise ValueError(f"Participant {participant_id} does not exist")
+
+        return tuple(
+            ActiveOrderSummary(
+                order_id=order.order_id,
+                timestamp=order.timestamp,
+            )
+            for order in self._active_orders.values()
+            if order.participant_id == participant_id
+        )
+
+    def get_reference_price(self, symbol: Symbol) -> PriceTicks | None:
+        """Determine a reference price for a given symbol. Returns the midpoint
+        when active BUY and SELL orders exist. Otherwise, returns the best bid
+        or ask, or the last traded price, in that order of priority. Returns
+        None if no price is available."""
+
+        book: BookSnapshot = self.get_book_snapshot(symbol)
+
+        if len(book.bids) > 0 and len(book.asks) > 0:
+            # Midpoint
+            return (book.bids[0].price_ticks + book.asks[0].price_ticks) // 2
+
+        if len(book.bids) > 0:
+            # Best bid
+            return book.bids[0].price_ticks
+
+        if len(book.asks) > 0:
+            # Best ask
+            return book.asks[0].price_ticks
+
+        trades: tuple[Trade, ...] = self.get_trades_by_symbol(symbol)
+        if len(trades) > 0:
+            # Last traded price
+            return trades[-1].price_ticks
+
+        return None

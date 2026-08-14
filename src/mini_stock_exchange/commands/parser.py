@@ -82,14 +82,26 @@ class Parser:
             case TokenType.ADD:
                 self._advance()
                 match self._peek().type:
-                    case TokenType.INSTR | TokenType.PARTICIPANT:
-                        add = self._advance()
+                    case TokenType.INSTR:
+                        self._advance()
+                        ident = self._expect(TokenType.IDENTIFIER)
+                        self._expect(TokenType.PRICE)
+                        price = self._expect_positive_integer("Price")
+                        self._expect(TokenType.VOLUME)
+                        volume = self._expect_positive_integer("Volume")
+                        self._expect(TokenType.END)
+                        return AddInstrument(
+                            symbol=ident.lexeme,
+                            price_ticks=price,
+                            volume=volume,
+                        )
+
+                    case TokenType.PARTICIPANT:
+                        self._advance()
                         ident = self._expect(TokenType.IDENTIFIER)
                         self._expect(TokenType.END)
-                        if add.type == TokenType.INSTR:
-                            return AddInstrument(symbol=ident.lexeme)
-                        else:
-                            return AddParticipant(participant_id=ident.lexeme)
+                        return AddParticipant(participant_id=ident.lexeme)
+
                     case _:
                         raise ParserError(
                             f"Command not recognised: ADD {self._peek().lexeme}"

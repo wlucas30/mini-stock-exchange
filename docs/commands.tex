@@ -127,7 +127,8 @@ command =
     ;
 
 add-instrument-command =
-    "ADD", "INSTR", symbol
+    "ADD", "INSTR", symbol,
+    "PRICE", price, "VOLUME", quantity
     ;
 
 add-participant-command =
@@ -239,24 +240,33 @@ nonzero-digit =
 \subsubsection*{Syntax}
 
 \begin{lstlisting}
-ADD INSTR <symbol>
+ADD INSTR <symbol> PRICE <price> VOLUME <volume>
 \end{lstlisting}
 
 \subsubsection*{Description}
 
-Adds a new tradable instrument to the exchange.
+Adds a new tradable instrument to the exchange and issues its initial volume.
 
 The supplied symbol must be a valid identifier and must not already
-belong to another instrument.
+belong to another instrument. The price and volume must be positive integers.
+
+The issued volume is credited to the \texttt{EXCHANGE\_MASTER} participant and
+immediately placed for sale as a limit order at the supplied price. This gives
+the new instrument an initial ask from which other participants can buy.
+
+The supplied price also becomes the instrument's initial hidden fundamental
+value. Its initial sentiment is neutral and its initial volatility is 0.1 per
+cent. Hidden market state is maintained by the simulation and is not exposed
+through the exchange's public order book.
 
 \subsubsection*{Example}
 
 \begin{lstlisting}
-ADD INSTR AAPL
+ADD INSTR AAPL PRICE 10000 VOLUME 100
 \end{lstlisting}
 
-After this command succeeds, participants may submit orders for
-\texttt{AAPL}.
+After this command succeeds, 100 units of \texttt{AAPL} are offered for sale
+at 10000 ticks.
 
 \subsubsection*{Possible errors}
 
@@ -265,7 +275,8 @@ The command will fail if:
 \begin{itemize}
     \item the symbol is not a valid identifier;
     \item the symbol is a reserved keyword; or
-    \item an instrument with the same symbol already exists.
+    \item an instrument with the same symbol already exists;
+    \item the price or volume is not positive.
 \end{itemize}
 
 \subsection{\texttt{ADD PARTICIPANT}}

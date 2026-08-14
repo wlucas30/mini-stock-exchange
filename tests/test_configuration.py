@@ -9,6 +9,7 @@ from mini_stock_exchange.configuration import (
     seed_exchange,
 )
 from mini_stock_exchange.exchange.exchange import Exchange
+from mini_stock_exchange.simulation import MarketState, Sentiment
 
 
 def test_repository_default_instruments() -> None:
@@ -43,7 +44,7 @@ def test_seed_exchange_adds_instruments_master_and_initial_asks(
     )
     exchange = Exchange(time=lambda: 123)
 
-    seed_exchange(exchange, config)
+    market_states = seed_exchange(exchange, config)
 
     assert exchange.get_instrument_symbols() == ("ALPHA", "BETA")
     assert exchange.get_participant_summaries()[0].participant_id == (
@@ -59,6 +60,20 @@ def test_seed_exchange_adds_instruments_master_and_initial_asks(
     beta_ask = exchange.get_book_snapshot("BETA").asks[0]
     assert beta_ask.price_ticks == 2000
     assert beta_ask.remaining_quantity == 50
+    assert market_states == (
+        MarketState(
+            symbol="ALPHA",
+            fundamental_value_ticks=1000,
+            sentiment=Sentiment.NEUTRAL,
+            volatility=0.001,
+        ),
+        MarketState(
+            symbol="BETA",
+            fundamental_value_ticks=2000,
+            sentiment=Sentiment.NEUTRAL,
+            volatility=0.001,
+        ),
+    )
 
 
 @pytest.mark.parametrize(

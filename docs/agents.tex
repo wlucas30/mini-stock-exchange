@@ -1,0 +1,198 @@
+\documentclass{article}
+
+\usepackage[T1]{fontenc}
+\usepackage{array}
+\usepackage{geometry}
+\usepackage{hyperref}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.6em}
+
+\geometry{margin=1in}
+
+\title{Simulated Market Agents and Instrument Behaviour}
+\author{Will Lucas}
+\date{}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+
+\section{Purpose}
+
+This document describes the intended high-level behaviour of automated
+trading agents and simulated instruments.
+
+The aim is to create an active two-sided market in which traded
+prices emerge from orders submitted by participants. The exchange itself does
+not arbitrarily change a displayed market price. It accepts orders, applies
+price--time priority, and records the prices at which trades occur.
+
+\section{Instrument Behaviour}
+
+\subsection{Fundamental value}
+
+Each instrument has an underlying fundamental value representing an estimate
+of its economic worth. This value exists separately from the last traded price
+and from the prices of orders currently resting on the book.
+
+The fundamental value changes periodically as simulation time advances. It is
+a driver of agent behaviour rather than an execution price imposed by the
+exchange. Consequently, the traded price may be above or below fundamental
+value, and it may take time for market activity to move the two closer
+together.
+
+When an instrument is first issued, its initial fundamental value is the issue
+price supplied for its initial sell order. It begins in a neutral sentiment
+regime. Its initial volatility is 0.1 per cent. These defaults provide a
+complete hidden state without requiring additional instrument-creation
+parameters.
+
+\subsection{Sentiment}
+
+Each instrument has a sentiment regime, such as bullish, neutral,
+or bearish. Sentiment influences the likely direction of changes in its
+fundamental value:
+
+\begin{itemize}
+    \item bullish sentiment tends to produce positive changes;
+    \item neutral sentiment tends to produce little directional movement; and
+    \item bearish sentiment tends to produce negative changes.
+\end{itemize}
+
+Sentiment should normally persist for a period before changing. This allows
+recognisable trends to develop instead of selecting an unrelated direction on
+every simulation step. Regime changes remain uncertain and may reverse an
+existing trend.
+
+On each simulation step there is a small possibility that an instrument moves
+to a different sentiment regime. Most steps retain the current regime, allowing
+market conditions to remain persistent.
+
+Sentiment does not mean that every agent automatically buys or sells in the
+same direction. It affects the underlying environment, while agents interpret
+available information according to their own strategies.
+
+\subsection{Volatility and random movement}
+
+Volatility controls the typical size and variability of changes in fundamental
+value. A low-volatility instrument should usually move gradually, while a
+high-volatility instrument may experience larger and less predictable changes.
+
+Random movement prevents the market from following a perfectly predictable
+path. Sentiment supplies directional pressure, but volatility and random shocks
+mean that a bullish instrument may fall on a particular step and a bearish
+instrument may temporarily rise.
+
+Volatility is represented as a proportion of fundamental value rather than a
+fixed number of ticks. It fluctuates gradually on every simulation step within
+bounded limits. Fundamental value then receives a random percentage movement,
+with bullish or bearish sentiment biasing the likely direction. Fundamental
+value is always kept at or above one tick.
+
+The simulator does not require reproducible random outcomes. Separate runs may
+produce completely different price histories even when they begin with the
+same instruments and participants.
+
+\section{Agent Categories}
+
+\subsection{Noise traders}
+
+Noise traders create ordinary, imperfect market activity. They submit buys and
+sells with variation in side, price, quantity, and timing. Their decisions may
+be loosely centred around public market prices, but they do not possess special
+knowledge of the underlying fundamental value.
+
+Noise traders help populate both sides of the order book and prevent all order
+flow from being the product of highly informed strategies. Their activity may
+temporarily move traded prices away from fundamental value.
+
+\subsection{Fundamental traders}
+
+Fundamental traders attempt to identify when the market price differs from an
+instrument's economic worth. They may buy when the instrument appears cheap
+and sell when it appears expensive.
+
+They do not receive the exact hidden fundamental value or sentiment regime.
+Instead, they receive an imperfect estimate or signal. Different traders may
+receive signals of different quality or interpret the same signal differently.
+
+\subsection{Trend followers}
+
+Trend followers make decisions from observable market behaviour. They may
+respond to recent trade prices, changes in price, momentum, trading volume, or
+the state of the public order book.
+
+They do not need access to fundamental information. A trend follower may buy
+into an upward movement or sell into a downward movement even where the market
+has already moved away from fundamental value. This can extend trends and
+introduce delayed reactions to changing conditions.
+
+\subsection{Market makers}
+
+Market makers attempt to provide continuous liquidity by maintaining buy and
+sell orders around an estimated fair price. They earn a potential spread in
+exchange for accepting inventory risk and the risk of trading against better
+informed participants.
+
+Their decisions may consider the public order book, recent trades, current
+inventory, available cash, and an imperfect estimate of fundamental value.
+They should adjust their quotes or reduce activity when inventory becomes too
+one-sided.
+
+\section{Information Access}
+
+Hidden market state should not be exposed equally to all agents. Public market
+information is available to strategies that choose to use it, while
+fundamental information is supplied only as an imperfect signal. No ordinary
+agent receives the exact fundamental value or the literal hidden sentiment
+regime.
+
+\begin{center}
+\small
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{|>{\raggedright\arraybackslash}p{3.6cm}|c|c|c|c|}
+\hline
+\textbf{Information} & \textbf{Noise trader} & \textbf{Fundamental trader}
+& \textbf{Trend follower} & \textbf{Market maker} \\
+\hline
+Public order book & Optional & Yes & Yes & Yes \\
+\hline
+Public trade history & Optional & Yes & Yes & Yes \\
+\hline
+Exact fundamental value & No & No & No & No \\
+\hline
+Imperfect fundamental signal & No & Yes & No & Optional \\
+\hline
+Hidden sentiment regime & No & Indirectly & No & Indirectly \\
+\hline
+Own cash, positions, and reservations & Yes & Yes & Yes & Yes \\
+\hline
+Other participants' private state & No & No & No & No \\
+\hline
+\end{tabular}
+\end{center}
+
+``Optional'' means that a strategy may use the information but does not depend
+on it. ``Indirectly'' means that sentiment may influence an agent's imperfect
+signal without revealing the name or exact state of the regime.
+
+\section{Market Price Formation}
+
+Agents convert their observations and strategies into order requests. Those
+orders interact through the normal exchange matching rules. The resulting
+trade prices form the public price history of each instrument.
+
+This separation is important:
+
+\begin{enumerate}
+    \item the simulated environment changes an instrument's hidden fundamental
+          conditions;
+    \item agents receive different observations of the environment and market;
+    \item agents submit orders based on those observations;
+    \item the exchange matches compatible orders; and
+    \item completed trades determine the observable market price.
+\end{enumerate}
+
+\end{document}
