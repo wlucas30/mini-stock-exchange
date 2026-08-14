@@ -40,6 +40,10 @@ places an initial sell order for 100 units of each instrument on behalf of the
 `EXCHANGE_MASTER` participant. Prices in the configuration file are integer
 ticks, where one tick is one cent.
 
+`config/default_agents.csv` creates the simulation's automated traders and
+gives each one its configured starting cash balance and strategy. The default
+configuration starts three `RandomNoise` traders with $10,000 each.
+
 Simulation time starts at zero and advances once per real second. Use
 `SET TIME MULTIPLIER <n>` to change its speed (`0` pauses it) and
 `FAST FORWARD <delta>` to advance it immediately. Every intermediate
