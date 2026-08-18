@@ -36,10 +36,7 @@ python main.py
 ```
 
 At startup, `config/default_instruments.csv` creates ALPHA, BETA and GAMMA and
-distributes the initial volume of each instrument across up to 20 smaller sell orders
-on behalf of the `EXCHANGE_MASTER` participant. Their prices form an even
-ladder spanning 2% below to 2% above the configured starting price, avoiding a
-single large order at one price. Prices in the configuration file are integer
+defines each instrument's starting price and total supply. Prices are integer
 ticks, where one tick is one cent.
 
 `config/default_agents.csv` creates the simulation's automated traders and
@@ -47,6 +44,11 @@ gives each one its configured starting cash balance and strategy. The default
 configuration starts eight `RandomNoise` traders with $10,000 each, two
 `Fundamental` traders with $20,000 each, and two `MarketMaker` agents with
 $20,000 each.
+
+`config/default_agent_positions.csv` allocates the complete initial supply of
+each instrument directly to participants. The default configuration divides
+each instrument equally between the two market makers and records the starting
+price as their acquisition cost.
 
 Simulation time starts at zero and advances once per real second. Use
 `SET TIME MULTIPLIER <n>` to change its speed (`0` pauses it) and

@@ -7,7 +7,6 @@ from typing import Protocol
 from mini_stock_exchange.exchange.exchange import Exchange
 from mini_stock_exchange.exchange.models import (
     Instrument,
-    Order,
     ParticipantId,
     PriceTicks,
     Quantity,
@@ -151,10 +150,12 @@ class Simulation:
         simulation_time: SimulationTime,
         agents: Iterable[SimulationAgent] = (),
         market_states: Iterable[MarketState] = (),
+        initial_position_holder_ids: Iterable[ParticipantId] = (),
     ) -> None:
         self._exchange = exchange
         self._time = simulation_time
         self._agents = list(agents)
+        self._initial_position_holder_ids = tuple(initial_position_holder_ids)
         self._market_states: dict[Symbol, MarketState] = {}
 
         for market_state in market_states:
@@ -192,25 +193,48 @@ class Simulation:
     def issue_instrument(
         self,
         instrument: Instrument,
-        issuer_id: ParticipantId,
         price_ticks: PriceTicks,
         volume: Quantity,
-    ) -> Order:
-        """Issue an instrument and create its initial hidden market state."""
+    ) -> None:
+        """Allocate a new instrument across the initial position holders."""
         if instrument.symbol in self._market_states:
             raise ValueError(f"Market state already exists: {instrument.symbol}")
+        if not self._initial_position_holder_ids:
+            raise ValueError("No participants are configured to receive new supply")
+        if price_ticks <= 0:
+            raise ValueError("Issue price must be positive")
+        if volume <= 0:
+            raise ValueError("Issue volume must be positive")
 
-        order = self._exchange.issue_instrument(
-            instrument=instrument,
-            issuer_id=issuer_id,
-            price_ticks=price_ticks,
-            volume=volume,
+        participant_ids = {
+            participant.participant_id
+            for participant in self._exchange.get_participant_summaries()
+        }
+        unknown_holders = set(self._initial_position_holder_ids) - participant_ids
+        if unknown_holders:
+            unknown = ", ".join(sorted(unknown_holders))
+            raise ValueError(f"Initial position holder(s) do not exist: {unknown}")
+
+        self._exchange.add_instrument(instrument)
+        base_quantity, remainder = divmod(
+            volume,
+            len(self._initial_position_holder_ids),
         )
+        for index, participant_id in enumerate(self._initial_position_holder_ids):
+            quantity = base_quantity + (1 if index < remainder else 0)
+            if quantity == 0:
+                continue
+            self._exchange.allocate_initial_position(
+                participant_id=participant_id,
+                symbol=instrument.symbol,
+                quantity=quantity,
+                price_ticks=price_ticks,
+            )
+
         self._market_states[instrument.symbol] = make_initial_market_state(
             symbol=instrument.symbol,
             fundamental_value_ticks=price_ticks,
         )
-        return order
 
     def step(self) -> Timestamp:
         """Advance one unit and give every agent one opportunity to act."""

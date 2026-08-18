@@ -94,12 +94,17 @@ def test_fast_forward_runs_every_intermediate_step() -> None:
 def test_issue_instrument_creates_hidden_market_state() -> None:
     simulation, _ = make_simulation()
     simulation.exchange.add_participant(
-        Participant("EXCHANGE_MASTER", "Exchange Master", balance=0)
+        Participant("MARKET_MAKER", "Market Maker", balance=0)
+    )
+
+    simulation = Simulation(
+        simulation.exchange,
+        SimulationTime(),
+        initial_position_holder_ids=("MARKET_MAKER",),
     )
 
     simulation.issue_instrument(
         instrument=Instrument(symbol="AAPL"),
-        issuer_id="EXCHANGE_MASTER",
         price_ticks=10_000,
         volume=100,
     )

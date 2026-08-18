@@ -3,12 +3,12 @@ from pathlib import Path
 import pytest
 
 from mini_stock_exchange.configuration import (
-    EXCHANGE_MASTER_ID,
     DefaultInstrument,
     read_default_instruments,
     seed_exchange,
 )
 from mini_stock_exchange.exchange.exchange import Exchange
+from mini_stock_exchange.exchange.models import Participant
 from mini_stock_exchange.simulation import MarketState, Sentiment
 
 
@@ -34,36 +34,37 @@ def test_repository_default_instruments() -> None:
     )
 
 
-def test_seed_exchange_adds_instruments_master_and_initial_asks(
+def test_seed_exchange_allocates_configured_initial_positions(
     tmp_path: Path,
 ) -> None:
-    config = tmp_path / "instruments.csv"
-    config.write_text(
+    instruments = tmp_path / "instruments.csv"
+    instruments.write_text(
         "symbol,starting_price_ticks,initial_quantity\nALPHA,1000,100\nBETA,2000,50\n",
         encoding="utf-8",
     )
+    positions = tmp_path / "positions.csv"
+    positions.write_text(
+        "participant_id,symbol,quantity\n"
+        "MAKER_1,ALPHA,50\n"
+        "MAKER_2,ALPHA,50\n"
+        "MAKER_1,BETA,25\n"
+        "MAKER_2,BETA,25\n",
+        encoding="utf-8",
+    )
     exchange = Exchange(time=lambda: 123)
+    exchange.add_participant(Participant("MAKER_1", "Maker 1"))
+    exchange.add_participant(Participant("MAKER_2", "Maker 2"))
 
-    market_states = seed_exchange(exchange, config)
+    market_states = seed_exchange(exchange, instruments, positions)
 
     assert exchange.get_instrument_symbols() == ("ALPHA", "BETA")
-    assert exchange.get_participant_summaries()[0].participant_id == (
-        EXCHANGE_MASTER_ID
-    )
-    assert exchange.get_participant_summaries()[0].balance == 0
+    assert exchange.get_book_snapshot("ALPHA").asks == ()
+    assert exchange.get_book_snapshot("BETA").asks == ()
 
-    alpha_asks = exchange.get_book_snapshot("ALPHA").asks
-    assert len(alpha_asks) == 20
-    assert {ask.participant_id for ask in alpha_asks} == {EXCHANGE_MASTER_ID}
-    assert alpha_asks[0].price_ticks == 980
-    assert alpha_asks[-1].price_ticks == 1020
-    assert sum(ask.remaining_quantity for ask in alpha_asks) == 100
-
-    beta_asks = exchange.get_book_snapshot("BETA").asks
-    assert len(beta_asks) == 20
-    assert beta_asks[0].price_ticks == 1960
-    assert beta_asks[-1].price_ticks == 2040
-    assert sum(ask.remaining_quantity for ask in beta_asks) == 50
+    maker_1 = exchange.get_participant_details("MAKER_1")
+    assert tuple(
+        (position.symbol, position.total_quantity) for position in maker_1.positions
+    ) == (("ALPHA", 50), ("BETA", 25))
     assert market_states == (
         MarketState(
             symbol="ALPHA",

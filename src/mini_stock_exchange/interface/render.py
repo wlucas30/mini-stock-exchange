@@ -100,13 +100,11 @@ class Renderer:
                 instrument=instrument,
                 price_ticks=price_ticks,
                 volume=volume,
-                initial_order_id=initial_order_id,
             ):
                 return TextOutput(
                     text=(
-                        f"Successfully added instrument {instrument.symbol} and "
-                        f"listed {volume} units at {price_ticks} ticks "
-                        f"with order ID {initial_order_id}."
+                        f"Successfully added instrument {instrument.symbol} with "
+                        f"{volume} units allocated at {price_ticks} ticks."
                     )
                 )
 

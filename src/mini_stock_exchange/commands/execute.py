@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 
-from mini_stock_exchange.configuration import EXCHANGE_MASTER_ID
 from mini_stock_exchange.exchange.exchange import Exchange
 from mini_stock_exchange.exchange.models import (
     Instrument,
@@ -66,7 +65,6 @@ class AddInstrumentResponse:
     instrument: Instrument
     price_ticks: PriceTicks
     volume: Quantity
-    initial_order_id: OrderId
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -158,9 +156,8 @@ class Executor:
                     if self._simulation is None:
                         return ErrorResponse(message="Simulation is unavailable")
 
-                    order = self._simulation.issue_instrument(
+                    self._simulation.issue_instrument(
                         instrument=instrument,
-                        issuer_id=EXCHANGE_MASTER_ID,
                         price_ticks=price_ticks,
                         volume=volume,
                     )
@@ -168,7 +165,6 @@ class Executor:
                         instrument=instrument,
                         price_ticks=price_ticks,
                         volume=volume,
-                        initial_order_id=order.order_id,
                     )
                 except ValueError as error:
                     return ErrorResponse(message=f"Failed to add instrument: {error}")

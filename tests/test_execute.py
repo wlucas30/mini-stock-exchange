@@ -21,10 +21,6 @@ from mini_stock_exchange.commands.execute import (
     ShowParticipantResponse,
     ShowTimeResponse,
 )
-from mini_stock_exchange.configuration import (
-    EXCHANGE_MASTER_ID,
-    EXCHANGE_MASTER_NAME,
-)
 from mini_stock_exchange.exchange.exchange import Exchange
 from mini_stock_exchange.exchange.models import (
     Instrument,
@@ -42,10 +38,13 @@ from mini_stock_exchange.simulation import Simulation, SimulationTime
 def test_add_instrument_returns_the_added_instrument() -> None:
     simulation_time = SimulationTime(current_time=100)
     exchange = Exchange(time=lambda: simulation_time.current_time)
-    exchange.add_participant(
-        Participant(EXCHANGE_MASTER_ID, EXCHANGE_MASTER_NAME, balance=0)
+    exchange.add_participant(Participant("MAKER_1", "Maker 1", balance=10_000))
+    exchange.add_participant(Participant("MAKER_2", "Maker 2", balance=10_000))
+    simulation = Simulation(
+        exchange,
+        simulation_time,
+        initial_position_holder_ids=("MAKER_1", "MAKER_2"),
     )
-    simulation = Simulation(exchange, simulation_time)
     executor = Executor(exchange, simulation)
 
     response = executor.execute(
@@ -56,24 +55,27 @@ def test_add_instrument_returns_the_added_instrument() -> None:
         instrument=Instrument(symbol="AAPL"),
         price_ticks=10000,
         volume=100,
-        initial_order_id=1,
     )
-    ask = exchange.get_book_snapshot("AAPL").asks[0]
-    assert ask.participant_id == EXCHANGE_MASTER_ID
-    assert ask.price_ticks == 10000
-    assert ask.remaining_quantity == 100
-    master = exchange.get_participant_details(EXCHANGE_MASTER_ID)
-    assert master.positions[0].available_quantity == 0
-    assert master.positions[0].reserved_quantity == 100
+    assert exchange.get_book_snapshot("AAPL").asks == ()
+    assert (
+        exchange.get_participant_details("MAKER_1").positions[0].available_quantity
+        == 50
+    )
+    assert (
+        exchange.get_participant_details("MAKER_2").positions[0].available_quantity
+        == 50
+    )
 
 
 def test_add_duplicate_instrument_returns_error() -> None:
     simulation_time = SimulationTime(current_time=100)
     exchange = Exchange(time=lambda: simulation_time.current_time)
-    exchange.add_participant(
-        Participant(EXCHANGE_MASTER_ID, EXCHANGE_MASTER_NAME, balance=0)
+    exchange.add_participant(Participant("MAKER", "Maker", balance=10_000))
+    simulation = Simulation(
+        exchange,
+        simulation_time,
+        initial_position_holder_ids=("MAKER",),
     )
-    simulation = Simulation(exchange, simulation_time)
     executor = Executor(exchange, simulation)
     command = AddInstrument(symbol="AAPL", price_ticks=10000, volume=100)
     executor.execute(command)

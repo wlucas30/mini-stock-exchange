@@ -43,12 +43,11 @@ exchange. Consequently, the traded price may be above or below fundamental
 value, and it may take time for market activity to move the two closer
 together.
 
-When an instrument is first issued, its initial fundamental value is the
-configured starting price. The startup configuration distributes issued volume
-across smaller sell orders around that price. The instrument begins in a neutral sentiment
-regime. Its initial volatility is 0.1 per cent. These defaults provide a
-complete hidden state without requiring additional instrument-creation
-parameters.
+When an instrument is first created, its initial fundamental value is the
+configured starting price. Its complete initial supply is allocated directly
+to configured participants at that acquisition cost. No startup orders are
+created automatically. The instrument begins in a neutral sentiment regime.
+Its initial volatility is 0.1\%.
 
 \subsection{Sentiment}
 
