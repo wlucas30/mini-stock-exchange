@@ -43,8 +43,9 @@ exchange. Consequently, the traded price may be above or below fundamental
 value, and it may take time for market activity to move the two closer
 together.
 
-When an instrument is first issued, its initial fundamental value is the issue
-price supplied for its initial sell order. It begins in a neutral sentiment
+When an instrument is first issued, its initial fundamental value is the
+configured starting price. The startup configuration distributes issued volume
+across smaller sell orders around that price. The instrument begins in a neutral sentiment
 regime. Its initial volatility is 0.1 per cent. These defaults provide a
 complete hidden state without requiring additional instrument-creation
 parameters.
