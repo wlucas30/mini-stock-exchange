@@ -39,6 +39,7 @@ class Exchange:
         self._trades: list[Trade] = []
         self._reserved_cash: dict[OrderId, Cash] = {}
         self._reserved_positions: dict[OrderId, Quantity] = {}
+        self._position_cost_basis: dict[tuple[ParticipantId, Symbol], Cash] = {}
 
         self._next_order_id: OrderId = 1
         self._next_trade_id: TradeId = 1
@@ -90,6 +91,20 @@ class Exchange:
         if order.price_ticks is None:
             raise RuntimeError("Limit buy order must have a price")
         return order.original_quantity * order.price_ticks
+
+    def _total_position_quantity(
+        self,
+        participant_id: ParticipantId,
+        symbol: Symbol,
+    ) -> Quantity:
+        participant = self._participants[participant_id]
+        reserved = sum(
+            quantity
+            for order_id, quantity in self._reserved_positions.items()
+            if self._orders[order_id].participant_id == participant_id
+            and self._orders[order_id].symbol == symbol
+        )
+        return participant.positions.get(symbol, 0) + reserved
 
     def _validate_order_request(self, request: RequestForOrder) -> None:
         """Ensure the given request is valid and the participant can fund it."""
@@ -221,6 +236,14 @@ class Exchange:
         buyer = self._participants[buy_order.participant_id]
         seller = self._participants[sell_order.participant_id]
 
+        seller_cost_basis_key = (sell_order.participant_id, sell_order.symbol)
+        seller_total_quantity = self._total_position_quantity(
+            sell_order.participant_id,
+            sell_order.symbol,
+        )
+        seller_cost_basis = self._position_cost_basis.get(seller_cost_basis_key, 0)
+        sold_cost_basis = seller_cost_basis * quantity // seller_total_quantity
+
         remaining_cash = reserved_cash - reserved_for_fill
         if remaining_cash == 0:
             del self._reserved_cash[buy_order.order_id]
@@ -238,6 +261,17 @@ class Exchange:
             buyer.positions.get(buy_order.symbol, 0) + quantity
         )
         seller.balance += actual_cost
+
+        buyer_cost_basis_key = (buy_order.participant_id, buy_order.symbol)
+        self._position_cost_basis[buyer_cost_basis_key] = (
+            self._position_cost_basis.get(buyer_cost_basis_key, 0) + actual_cost
+        )
+
+        remaining_cost_basis = seller_cost_basis - sold_cost_basis
+        if remaining_cost_basis == 0:
+            self._position_cost_basis.pop(seller_cost_basis_key, None)
+        else:
+            self._position_cost_basis[seller_cost_basis_key] = remaining_cost_basis
 
         trade = Trade(
             trade_id=self._generate_trade_id(),
@@ -381,6 +415,10 @@ class Exchange:
         issuer.positions[instrument.symbol] = (
             issuer.positions.get(instrument.symbol, 0) + volume
         )
+        cost_basis_key = (issuer_id, instrument.symbol)
+        self._position_cost_basis[cost_basis_key] = (
+            self._position_cost_basis.get(cost_basis_key, 0) + price_ticks * volume
+        )
 
         return self.place_order(
             RequestForOrder(
@@ -446,6 +484,9 @@ class Exchange:
             ParticipantSummary(
                 participant_id=participant.participant_id,
                 balance=participant.balance,
+                net_worth=self.get_participant_details(
+                    participant.participant_id
+                ).net_worth,
             )
             for participant in self._participants.values()
         )
@@ -485,12 +526,31 @@ class Exchange:
             or reserved_positions.get(symbol, 0) != 0
         )
 
+        market_value: Cash = 0
+        cost_basis: Cash = 0
+        for position in positions:
+            position_cost_basis = self._position_cost_basis.get(
+                (participant_id, position.symbol),
+                0,
+            )
+            reference_price = self.get_reference_price(position.symbol)
+            if reference_price is None:
+                market_value += position_cost_basis
+            else:
+                market_value += position.total_quantity * reference_price
+            cost_basis += position_cost_basis
+
+        total_cash = participant.balance + reserved_cash
+        unrealised_gain = market_value - cost_basis
+
         return ParticipantDetails(
             participant_id=participant.participant_id,
             display_name=participant.display_name,
             available_cash=participant.balance,
             reserved_cash=reserved_cash,
             positions=positions,
+            unrealised_gain=unrealised_gain,
+            net_worth=total_cash + market_value,
         )
 
     def count_participant_active_orders(

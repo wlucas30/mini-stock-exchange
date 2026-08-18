@@ -345,10 +345,13 @@ LIST PARTICIPANT
 
 \subsubsection*{Description}
 
-Displays the identifiers and available cash balances of all participants
+Displays the identifiers, available cash balances, and net worth of all participants
 currently registered with the exchange. Participants are displayed in
 registration order. Balances are formatted as dollar amounts; internally,
 one integer cash unit represents one cent.
+
+Net worth is the participant's total cash plus the current marked value of
+all available and reserved positions.
 
 If no participants exist, the command displays an empty list rather than
 returning an error.
@@ -533,8 +536,13 @@ SHOW PARTICIPANT <participant_id>
 \subsubsection*{Description}
 
 Displays an accounting snapshot for the specified participant. The cash
-summary contains available cash, cash reserved for active buy orders, and
-their combined total.
+summary contains available cash, cash reserved for active buy orders, their
+combined total, unrealised gain or loss, and net worth. Positive unrealised
+gains are displayed in green and negative unrealised gains in red.
+
+Positions are marked using the exchange's current reference price. Unrealised
+gain or loss is the difference between their marked value and average cost
+basis. Net worth is total cash plus marked position value.
 
 For each held instrument, the position table contains the quantity available
 to sell, the quantity reserved for active sell orders, and their combined
