@@ -44,7 +44,9 @@ ticks, where one tick is one cent.
 
 `config/default_agents.csv` creates the simulation's automated traders and
 gives each one its configured starting cash balance and strategy. The default
-configuration starts three `RandomNoise` traders with $10,000 each.
+configuration starts eight `RandomNoise` traders with $10,000 each, two
+`Fundamental` traders with $20,000 each, and two `MarketMaker` agents with
+$20,000 each.
 
 Simulation time starts at zero and advances once per real second. Use
 `SET TIME MULTIPLIER <n>` to change its speed (`0` pauses it) and

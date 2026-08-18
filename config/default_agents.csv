@@ -9,3 +9,5 @@ NOISE_7,Noise Trader 7,1000000,RandomNoise
 NOISE_8,Noise Trader 8,1000000,RandomNoise
 FUNDAMENTAL_1,Fundamental Trader 1,2000000,Fundamental
 FUNDAMENTAL_2,Fundamental Trader 2,2000000,Fundamental
+MARKET_MAKER_1,Market Maker 1,2000000,MarketMaker
+MARKET_MAKER_2,Market Maker 2,2000000,MarketMaker

@@ -3,7 +3,11 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
-from mini_stock_exchange.agents import FundamentalTrader, RandomNoiseTrader
+from mini_stock_exchange.agents import (
+    FundamentalTrader,
+    MarketMakerAgent,
+    RandomNoiseTrader,
+)
 from mini_stock_exchange.commands.lexer import KEYWORDS, is_identifier
 from mini_stock_exchange.exchange.exchange import Exchange
 from mini_stock_exchange.exchange.models import (
@@ -65,11 +69,22 @@ def _make_fundamental_trader(
     )
 
 
+def _make_market_maker(
+    participant_id: ParticipantId,
+    fundamental_value_estimator: FundamentalValueEstimator,
+) -> SimulationAgent:
+    return MarketMakerAgent(
+        participant_id=participant_id,
+        fundamental_value_estimator=fundamental_value_estimator,
+    )
+
+
 AGENT_FACTORIES: dict[
     str, Callable[[ParticipantId, FundamentalValueEstimator], SimulationAgent]
 ] = {
     "RandomNoise": _make_random_noise_trader,
     "Fundamental": _make_fundamental_trader,
+    "MarketMaker": _make_market_maker,
 }
 
 
