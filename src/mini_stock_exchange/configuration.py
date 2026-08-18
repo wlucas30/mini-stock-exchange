@@ -3,7 +3,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
-from mini_stock_exchange.agents import RandomNoiseTrader
+from mini_stock_exchange.agents import FundamentalTrader, RandomNoiseTrader
 from mini_stock_exchange.commands.lexer import KEYWORDS, is_identifier
 from mini_stock_exchange.exchange.exchange import Exchange
 from mini_stock_exchange.exchange.models import (
@@ -19,6 +19,7 @@ from mini_stock_exchange.exchange.models import (
     Symbol,
 )
 from mini_stock_exchange.simulation import (
+    FundamentalValueEstimator,
     MarketState,
     SimulationAgent,
     make_initial_market_state,
@@ -47,12 +48,28 @@ class DefaultAgent:
     strategy: str
 
 
-def _make_random_noise_trader(participant_id: ParticipantId) -> SimulationAgent:
+def _make_random_noise_trader(
+    participant_id: ParticipantId,
+    fundamental_value_estimator: FundamentalValueEstimator,
+) -> SimulationAgent:
     return RandomNoiseTrader(participant_id=participant_id)
 
 
-AGENT_FACTORIES: dict[str, Callable[[ParticipantId], SimulationAgent]] = {
+def _make_fundamental_trader(
+    participant_id: ParticipantId,
+    fundamental_value_estimator: FundamentalValueEstimator,
+) -> SimulationAgent:
+    return FundamentalTrader(
+        participant_id=participant_id,
+        fundamental_value_estimator=fundamental_value_estimator,
+    )
+
+
+AGENT_FACTORIES: dict[
+    str, Callable[[ParticipantId, FundamentalValueEstimator], SimulationAgent]
+] = {
     "RandomNoise": _make_random_noise_trader,
+    "Fundamental": _make_fundamental_trader,
 }
 
 
@@ -234,6 +251,7 @@ def seed_exchange(exchange: Exchange, path: Path) -> tuple[MarketState, ...]:
 def seed_agents(
     exchange: Exchange,
     path: Path,
+    fundamental_value_estimator: FundamentalValueEstimator,
 ) -> tuple[SimulationAgent, ...]:
     """Create configured participant accounts and automated agents."""
     agents: list[SimulationAgent] = []
@@ -246,6 +264,11 @@ def seed_agents(
                 balance=agent.balance,
             )
         )
-        agents.append(AGENT_FACTORIES[agent.strategy](agent.participant_id))
+        agents.append(
+            AGENT_FACTORIES[agent.strategy](
+                agent.participant_id,
+                fundamental_value_estimator,
+            )
+        )
 
     return tuple(agents)

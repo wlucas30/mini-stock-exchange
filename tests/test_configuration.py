@@ -19,17 +19,17 @@ def test_repository_default_instruments() -> None:
         DefaultInstrument(
             symbol="ALPHA",
             starting_price_ticks=1000,
-            initial_quantity=100,
+            initial_quantity=2000,
         ),
         DefaultInstrument(
             symbol="BETA",
             starting_price_ticks=2000,
-            initial_quantity=100,
+            initial_quantity=2000,
         ),
         DefaultInstrument(
             symbol="GAMMA",
             starting_price_ticks=3000,
-            initial_quantity=100,
+            initial_quantity=2000,
         ),
     )
 
