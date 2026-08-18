@@ -184,6 +184,10 @@ Agents convert their observations and strategies into order requests. Those
 orders interact through the normal exchange matching rules. The resulting
 trade prices form the public price history of each instrument.
 
+Automated strategies may assign an optional expiry timestamp to a limit order.
+The exchange cancels due orders as simulation time advances and releases any
+remaining reserved cash or positions.
+
 This separation is important:
 
 \begin{enumerate}

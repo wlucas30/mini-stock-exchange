@@ -68,6 +68,8 @@ class Order:
         timestamp (int): The timestamp the order was accepted at.
         price_ticks (PriceTicks): For limit orders, the price in integer ticks.
         status (OrderStatus): The current status of the order.
+        expires_at (Timestamp): Optional simulation timestamp at which the order
+            expires.
 
     """
 
@@ -82,6 +84,7 @@ class Order:
     timestamp: Timestamp
     price_ticks: PriceTicks | None
     status: OrderStatus
+    expires_at: Timestamp | None = None
 
     @property
     def filled_quantity(self) -> int:
@@ -141,6 +144,8 @@ class RequestForOrder:
         order_type (OrderType): Specifies whether this is a limit or market order.
         original_quantity (int): The quantity this order is to be placed at.
         price_ticks (PriceTicks): For limit orders, the price in integer ticks.
+        expires_at (Timestamp): Optional simulation timestamp at which a limit
+            order expires.
 
     """
 
@@ -150,6 +155,7 @@ class RequestForOrder:
     order_type: OrderType
     original_quantity: Quantity
     price_ticks: PriceTicks | None
+    expires_at: Timestamp | None = None
 
 
 @dataclass(frozen=True)
@@ -240,11 +246,3 @@ class ParticipantDetails:
     @property
     def total_cash(self) -> Cash:
         return self.available_cash + self.reserved_cash
-
-
-@dataclass(frozen=True, kw_only=True)
-class ActiveOrderSummary:
-    """An immutable view of an active order owned by a participant."""
-
-    order_id: OrderId
-    timestamp: Timestamp

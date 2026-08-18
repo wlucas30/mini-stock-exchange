@@ -1,7 +1,6 @@
 from collections.abc import Callable
 
 from .models import (
-    ActiveOrderSummary,
     Cash,
     Instrument,
     Order,
@@ -119,6 +118,12 @@ class Exchange:
             request.price_ticks is None or request.price_ticks <= 0
         ):
             raise ValueError("Limit orders must have a positive price")
+
+        if request.expires_at is not None:
+            if request.order_type is not OrderType.LIMIT:
+                raise ValueError("Only limit orders can have an expiry time")
+            if request.expires_at <= self._time():
+                raise ValueError("Order expiry time must be in the future")
 
         if request.original_quantity <= 0:
             raise ValueError("Must have positive quantity")
@@ -387,6 +392,16 @@ class Exchange:
         self.require_order_ownership(participant_id, order_id)
         self.cancel_order(order_id)
 
+    def expire_orders(self, timestamp: Timestamp) -> None:
+        """Cancel every active limit order whose expiry time is due."""
+        expiring_order_ids = tuple(
+            order.order_id
+            for order in self._active_orders.values()
+            if order.expires_at is not None and order.expires_at <= timestamp
+        )
+        for order_id in expiring_order_ids:
+            self.cancel_order(order_id)
+
     def add_instrument(self, instrument: Instrument) -> None:
         """Adds an instrument to the exchange."""
         if instrument.symbol in self._instruments:
@@ -449,6 +464,7 @@ class Exchange:
             sequence=self._generate_sequence_number(),
             timestamp=self._time(),
             status=OrderStatus.OPEN,
+            expires_at=request.expires_at,
         )
 
         self._reserve_order(order)
@@ -570,23 +586,6 @@ class Exchange:
         """Return the number of active orders held by one participant."""
         return sum(
             1
-            for order in self._active_orders.values()
-            if order.participant_id == participant_id
-        )
-
-    def get_participant_active_orders(
-        self,
-        participant_id: ParticipantId,
-    ) -> tuple[ActiveOrderSummary, ...]:
-        """Return immutable summaries of one participant's active orders."""
-        if participant_id not in self._participants:
-            raise ValueError(f"Participant {participant_id} does not exist")
-
-        return tuple(
-            ActiveOrderSummary(
-                order_id=order.order_id,
-                timestamp=order.timestamp,
-            )
             for order in self._active_orders.values()
             if order.participant_id == participant_id
         )

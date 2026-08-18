@@ -430,6 +430,10 @@ quantity rests on the order book.
 Resting orders are prioritised first by price and then by submission
 time.
 
+Orders submitted through the command interface do not have an automatic
+expiry and remain active until filled or cancelled. Automated strategies may
+set an expiry timestamp directly on their order requests.
+
 \subsubsection*{Examples}
 
 \begin{lstlisting}

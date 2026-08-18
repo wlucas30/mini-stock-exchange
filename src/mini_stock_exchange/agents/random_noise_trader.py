@@ -20,7 +20,7 @@ PRICE_STD_DEV_FRACTION = 0.0025
 QUANTITY_MEAN = 10.0
 QUANTITY_STD_DEV = 3.0
 MAX_ORDER_QUANTITY = 20
-MAX_ORDER_AGE = 100
+ORDER_LIFETIME = 100
 MAX_ORDERS = 1
 
 
@@ -31,14 +31,6 @@ class RandomNoiseTrader:
     participant_id: ParticipantId
 
     def act(self, exchange: Exchange, timestamp: Timestamp) -> None:
-        active_orders = exchange.get_participant_active_orders(self.participant_id)
-        for order in active_orders:
-            if timestamp - order.timestamp >= MAX_ORDER_AGE:
-                exchange.cancel_participant_order(
-                    self.participant_id,
-                    order.order_id,
-                )
-
         if random.random() >= ACTION_PROBABILITY:
             return
 
@@ -117,6 +109,7 @@ class RandomNoiseTrader:
             order_type=OrderType.LIMIT,
             original_quantity=quantity,
             price_ticks=price_ticks,
+            expires_at=timestamp + ORDER_LIFETIME,
         )
 
         exchange.place_order(request)

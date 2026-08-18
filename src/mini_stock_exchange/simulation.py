@@ -239,6 +239,7 @@ class Simulation:
     def step(self) -> Timestamp:
         """Advance one unit and give every agent one opportunity to act."""
         timestamp = self._time.step()
+        self._exchange.expire_orders(timestamp)
         for market_state in self._market_states.values():
             market_state.step()
         for agent in self._agents:
