@@ -36,8 +36,10 @@ python main.py
 ```
 
 At startup, `config/default_instruments.csv` creates ALPHA, BETA and GAMMA and
-places an initial sell order for 100 units of each instrument on behalf of the
-`EXCHANGE_MASTER` participant. Prices in the configuration file are integer
+distributes the initial volume of each instrument across up to 20 smaller sell orders
+on behalf of the `EXCHANGE_MASTER` participant. Their prices form an even
+ladder spanning 2% below to 2% above the configured starting price, avoiding a
+single large order at one price. Prices in the configuration file are integer
 ticks, where one tick is one cent.
 
 `config/default_agents.csv` creates the simulation's automated traders and
