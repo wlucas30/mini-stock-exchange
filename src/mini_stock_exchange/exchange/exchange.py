@@ -515,40 +515,62 @@ class Exchange:
             )
 
         symbols = dict.fromkeys((*participant.positions, *reserved_positions))
-        positions = tuple(
-            ParticipantPositionSummary(
-                symbol=symbol,
-                available_quantity=participant.positions.get(symbol, 0),
-                reserved_quantity=reserved_positions.get(symbol, 0),
+        positions: list[ParticipantPositionSummary] = []
+        for symbol in symbols:
+            available_quantity = participant.positions.get(symbol, 0)
+            reserved_quantity = reserved_positions.get(symbol, 0)
+            total_quantity = available_quantity + reserved_quantity
+            if total_quantity == 0:
+                continue
+
+            position_cost_basis = self._position_cost_basis.get(
+                (participant_id, symbol)
             )
-            for symbol in symbols
-            if participant.positions.get(symbol, 0) != 0
-            or reserved_positions.get(symbol, 0) != 0
-        )
+            average_cost_ticks = (
+                position_cost_basis // total_quantity
+                if position_cost_basis is not None
+                else None
+            )
+            positions.append(
+                ParticipantPositionSummary(
+                    symbol=symbol,
+                    available_quantity=available_quantity,
+                    reserved_quantity=reserved_quantity,
+                    average_cost_ticks=average_cost_ticks,
+                    mark_price_ticks=self.get_reference_price(symbol),
+                )
+            )
 
         market_value: Cash = 0
         cost_basis: Cash = 0
+        unrealised_gain_is_known = True
         for position in positions:
             position_cost_basis = self._position_cost_basis.get(
-                (participant_id, position.symbol),
-                0,
+                (participant_id, position.symbol)
             )
-            reference_price = self.get_reference_price(position.symbol)
-            if reference_price is None:
-                market_value += position_cost_basis
+            if position.mark_price_ticks is None:
+                unrealised_gain_is_known = False
+                if position_cost_basis is not None:
+                    market_value += position_cost_basis
             else:
-                market_value += position.total_quantity * reference_price
-            cost_basis += position_cost_basis
+                market_value += position.total_quantity * position.mark_price_ticks
+
+            if position_cost_basis is None:
+                unrealised_gain_is_known = False
+            else:
+                cost_basis += position_cost_basis
 
         total_cash = participant.balance + reserved_cash
-        unrealised_gain = market_value - cost_basis
+        unrealised_gain = (
+            market_value - cost_basis if unrealised_gain_is_known else None
+        )
 
         return ParticipantDetails(
             participant_id=participant.participant_id,
             display_name=participant.display_name,
             available_cash=participant.balance,
             reserved_cash=reserved_cash,
-            positions=positions,
+            positions=tuple(positions),
             unrealised_gain=unrealised_gain,
             net_worth=total_cash + market_value,
         )

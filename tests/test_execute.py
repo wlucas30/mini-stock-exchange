@@ -184,9 +184,11 @@ def test_show_participant_returns_available_and_reserved_assets() -> None:
                     symbol="AAPL",
                     available_quantity=6,
                     reserved_quantity=4,
+                    average_cost_ticks=None,
+                    mark_price_ticks=150,
                 ),
             ),
-            unrealised_gain=1_500,
+            unrealised_gain=None,
             net_worth=2_500,
         )
     )

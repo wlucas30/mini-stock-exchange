@@ -54,7 +54,9 @@ class Renderer:
         return f"{sign}${dollars:,}.{cents:02d}"
 
     @classmethod
-    def _format_gain(cls, gain: Cash) -> str:
+    def _format_gain(cls, gain: Cash | None) -> str:
+        if gain is None:
+            return "N/A"
         formatted = cls._format_cash(gain)
         if gain > 0:
             return f"{cls.GREEN}{formatted}{cls.RESET}"
@@ -207,12 +209,29 @@ class Renderer:
                             position.available_quantity,
                             position.reserved_quantity,
                             position.total_quantity,
+                            (
+                                self._format_cash(position.average_cost_ticks)
+                                if position.average_cost_ticks is not None
+                                else "N/A"
+                            ),
+                            (
+                                self._format_cash(position.mark_price_ticks)
+                                if position.mark_price_ticks is not None
+                                else "N/A"
+                            ),
                         )
                         for position in participant.positions
                     ),
-                    headers=("SYMBOL", "AVAILABLE", "RESERVED", "TOTAL"),
+                    headers=(
+                        "SYMBOL",
+                        "AVAILABLE",
+                        "RESERVED",
+                        "TOTAL",
+                        "AVG COST",
+                        "MARK PRICE",
+                    ),
                     tablefmt="simple",
-                    colalign=("left", "right", "right", "right"),
+                    colalign=("left", "right", "right", "right", "right", "right"),
                 )
                 return TextOutput(
                     text=(
