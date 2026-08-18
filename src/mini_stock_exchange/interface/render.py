@@ -43,11 +43,26 @@ class FigureOutput:
 
 
 class Renderer:
+    RED = "\033[31m"
+    GREEN = "\033[32m"
+    RESET = "\033[0m"
+
     @staticmethod
     def _format_cash(balance: Cash) -> str:
         sign = "-" if balance < 0 else ""
         dollars, cents = divmod(abs(balance), 100)
         return f"{sign}${dollars:,}.{cents:02d}"
+
+    @classmethod
+    def _format_gain(cls, gain: Cash | None) -> str:
+        if gain is None:
+            return "N/A"
+        formatted = cls._format_cash(gain)
+        if gain > 0:
+            return f"{cls.GREEN}{formatted}{cls.RESET}"
+        if gain < 0:
+            return f"{cls.RED}{formatted}{cls.RESET}"
+        return formatted
 
     @staticmethod
     def _generate_graph(symbol: Symbol, entries: tuple[GraphEntry, ...]) -> Figure:
@@ -128,12 +143,13 @@ class Renderer:
                         (
                             participant.participant_id,
                             self._format_cash(participant.balance),
+                            self._format_cash(participant.net_worth),
                         )
                         for participant in participants
                     ),
-                    headers=("PARTICIPANT", "BALANCE"),
+                    headers=("PARTICIPANT", "BALANCE", "NET WORTH"),
                     tablefmt="simple",
-                    colalign=("left", "right"),
+                    colalign=("left", "right", "right"),
                 )
                 return TextOutput(text=table)
 
@@ -172,11 +188,19 @@ class Renderer:
                             self._format_cash(participant.available_cash),
                             self._format_cash(participant.reserved_cash),
                             self._format_cash(participant.total_cash),
+                            self._format_gain(participant.unrealised_gain),
+                            self._format_cash(participant.net_worth),
                         ),
                     ),
-                    headers=("AVAILABLE CASH", "RESERVED CASH", "TOTAL CASH"),
+                    headers=(
+                        "AVAILABLE CASH",
+                        "RESERVED CASH",
+                        "TOTAL CASH",
+                        "UNREALISED GAIN",
+                        "NET WORTH",
+                    ),
                     tablefmt="simple",
-                    colalign=("right", "right", "right"),
+                    colalign=("right", "right", "right", "right", "right"),
                 )
                 position_table = tabulate(
                     (
@@ -185,12 +209,29 @@ class Renderer:
                             position.available_quantity,
                             position.reserved_quantity,
                             position.total_quantity,
+                            (
+                                self._format_cash(position.average_cost_ticks)
+                                if position.average_cost_ticks is not None
+                                else "N/A"
+                            ),
+                            (
+                                self._format_cash(position.mark_price_ticks)
+                                if position.mark_price_ticks is not None
+                                else "N/A"
+                            ),
                         )
                         for position in participant.positions
                     ),
-                    headers=("SYMBOL", "AVAILABLE", "RESERVED", "TOTAL"),
+                    headers=(
+                        "SYMBOL",
+                        "AVAILABLE",
+                        "RESERVED",
+                        "TOTAL",
+                        "AVG COST",
+                        "MARK PRICE",
+                    ),
                     tablefmt="simple",
-                    colalign=("left", "right", "right", "right"),
+                    colalign=("left", "right", "right", "right", "right", "right"),
                 )
                 return TextOutput(
                     text=(
