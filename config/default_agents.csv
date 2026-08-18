@@ -2,3 +2,10 @@ participant_id,display_name,balance,strategy
 NOISE_1,Noise Trader 1,1000000,RandomNoise
 NOISE_2,Noise Trader 2,1000000,RandomNoise
 NOISE_3,Noise Trader 3,1000000,RandomNoise
+NOISE_4,Noise Trader 4,1000000,RandomNoise
+NOISE_5,Noise Trader 5,1000000,RandomNoise
+NOISE_6,Noise Trader 6,1000000,RandomNoise
+NOISE_7,Noise Trader 7,1000000,RandomNoise
+NOISE_8,Noise Trader 8,1000000,RandomNoise
+FUNDAMENTAL_1,Fundamental Trader 1,2000000,Fundamental
+FUNDAMENTAL_2,Fundamental Trader 2,2000000,Fundamental

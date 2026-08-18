@@ -33,7 +33,15 @@ def main() -> None:
     simulation_time = SimulationTime()
     exchange = Exchange(time=lambda: simulation_time.current_time)
     market_states = seed_exchange(exchange, DEFAULT_INSTRUMENTS)
-    agents = seed_agents(exchange, DEFAULT_AGENTS)
+    agents = seed_agents(
+        exchange,
+        DEFAULT_AGENTS,
+        lambda symbol: next(
+            market_state.fundamental_value_estimate
+            for market_state in market_states
+            if market_state.symbol == symbol
+        ),
+    )
     simulation = Simulation(
         exchange,
         simulation_time,

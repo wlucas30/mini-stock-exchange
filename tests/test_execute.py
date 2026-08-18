@@ -136,8 +136,10 @@ def test_list_participants_returns_registered_ids_and_balances() -> None:
 
     assert response == ListParticipantsResponse(
         participants=(
-            ParticipantSummary(participant_id="ALICE", balance=123_45),
-            ParticipantSummary(participant_id="BOB", balance=67_89),
+            ParticipantSummary(
+                participant_id="ALICE", balance=123_45, net_worth=123_45
+            ),
+            ParticipantSummary(participant_id="BOB", balance=67_89, net_worth=67_89),
         )
     )
 
@@ -182,8 +184,12 @@ def test_show_participant_returns_available_and_reserved_assets() -> None:
                     symbol="AAPL",
                     available_quantity=6,
                     reserved_quantity=4,
+                    average_cost_ticks=None,
+                    mark_price_ticks=150,
                 ),
             ),
+            unrealised_gain=None,
+            net_worth=2_500,
         )
     )
 

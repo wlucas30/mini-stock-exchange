@@ -19,17 +19,17 @@ def test_repository_default_instruments() -> None:
         DefaultInstrument(
             symbol="ALPHA",
             starting_price_ticks=1000,
-            initial_quantity=100,
+            initial_quantity=2000,
         ),
         DefaultInstrument(
             symbol="BETA",
             starting_price_ticks=2000,
-            initial_quantity=100,
+            initial_quantity=2000,
         ),
         DefaultInstrument(
             symbol="GAMMA",
             starting_price_ticks=3000,
-            initial_quantity=100,
+            initial_quantity=2000,
         ),
     )
 
@@ -52,14 +52,18 @@ def test_seed_exchange_adds_instruments_master_and_initial_asks(
     )
     assert exchange.get_participant_summaries()[0].balance == 0
 
-    alpha_ask = exchange.get_book_snapshot("ALPHA").asks[0]
-    assert alpha_ask.participant_id == EXCHANGE_MASTER_ID
-    assert alpha_ask.price_ticks == 1000
-    assert alpha_ask.remaining_quantity == 100
+    alpha_asks = exchange.get_book_snapshot("ALPHA").asks
+    assert len(alpha_asks) == 20
+    assert {ask.participant_id for ask in alpha_asks} == {EXCHANGE_MASTER_ID}
+    assert alpha_asks[0].price_ticks == 980
+    assert alpha_asks[-1].price_ticks == 1020
+    assert sum(ask.remaining_quantity for ask in alpha_asks) == 100
 
-    beta_ask = exchange.get_book_snapshot("BETA").asks[0]
-    assert beta_ask.price_ticks == 2000
-    assert beta_ask.remaining_quantity == 50
+    beta_asks = exchange.get_book_snapshot("BETA").asks
+    assert len(beta_asks) == 20
+    assert beta_asks[0].price_ticks == 1960
+    assert beta_asks[-1].price_ticks == 2040
+    assert sum(ask.remaining_quantity for ask in beta_asks) == 50
     assert market_states == (
         MarketState(
             symbol="ALPHA",

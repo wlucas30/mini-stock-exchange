@@ -1,5 +1,5 @@
 import random
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from enum import Enum, auto
 from typing import Protocol
@@ -28,6 +28,10 @@ MAX_VOLATILITY = 0.05
 MIN_VOLATILITY_FACTOR = 0.9
 MAX_VOLATILITY_FACTOR = 1.1
 SENTIMENT_BIAS_FACTOR = 0.25
+FUNDAMENTAL_ESTIMATE_ERROR = 0.02
+
+
+type FundamentalValueEstimator = Callable[[Symbol], PriceTicks]
 
 
 @dataclass(kw_only=True)
@@ -71,6 +75,20 @@ class MarketState:
         percentage_movement = random.gauss(mean_movement, self.volatility)
         new_value = round(self.fundamental_value_ticks * (1 + percentage_movement))
         self.fundamental_value_ticks = max(1, new_value)
+
+    @property
+    def fundamental_value_estimate(self) -> PriceTicks:
+        std_dev = max(1.0, self.fundamental_value_ticks * FUNDAMENTAL_ESTIMATE_ERROR)
+
+        return max(
+            1,
+            round(
+                random.gauss(
+                    self.fundamental_value_ticks,
+                    std_dev,
+                )
+            ),
+        )
 
 
 def make_initial_market_state(

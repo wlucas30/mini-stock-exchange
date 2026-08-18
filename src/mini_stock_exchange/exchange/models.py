@@ -207,6 +207,7 @@ class ParticipantSummary:
 
     participant_id: ParticipantId
     balance: Cash
+    net_worth: Cash
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -216,6 +217,8 @@ class ParticipantPositionSummary:
     symbol: Symbol
     available_quantity: Quantity
     reserved_quantity: Quantity
+    average_cost_ticks: PriceTicks | None
+    mark_price_ticks: PriceTicks | None
 
     @property
     def total_quantity(self) -> Quantity:
@@ -231,6 +234,8 @@ class ParticipantDetails:
     available_cash: Cash
     reserved_cash: Cash
     positions: tuple[ParticipantPositionSummary, ...]
+    unrealised_gain: Cash | None
+    net_worth: Cash
 
     @property
     def total_cash(self) -> Cash:
