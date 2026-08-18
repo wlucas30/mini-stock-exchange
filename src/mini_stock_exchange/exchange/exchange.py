@@ -395,14 +395,14 @@ class Exchange:
         self._instruments[instrument.symbol] = instrument
         self._order_books[instrument.symbol] = OrderBook(instrument)
 
-    def issue_instrument(
+    def register_instrument_issue(
         self,
         instrument: Instrument,
         issuer_id: ParticipantId,
         price_ticks: PriceTicks,
         volume: Quantity,
-    ) -> Order:
-        """Register an instrument and list its issued volume for sale."""
+    ) -> None:
+        """Register an instrument and credit its issued volume to the issuer."""
         if issuer_id not in self._participants:
             raise ValueError(f"Participant {issuer_id} does not exist")
         if price_ticks <= 0:
@@ -418,6 +418,21 @@ class Exchange:
         cost_basis_key = (issuer_id, instrument.symbol)
         self._position_cost_basis[cost_basis_key] = (
             self._position_cost_basis.get(cost_basis_key, 0) + price_ticks * volume
+        )
+
+    def issue_instrument(
+        self,
+        instrument: Instrument,
+        issuer_id: ParticipantId,
+        price_ticks: PriceTicks,
+        volume: Quantity,
+    ) -> Order:
+        """Register an instrument and list its issued volume for sale."""
+        self.register_instrument_issue(
+            instrument=instrument,
+            issuer_id=issuer_id,
+            price_ticks=price_ticks,
+            volume=volume,
         )
 
         return self.place_order(
