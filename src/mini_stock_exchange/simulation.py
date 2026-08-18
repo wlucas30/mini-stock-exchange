@@ -23,14 +23,23 @@ class Sentiment(Enum):
 
 SENTIMENT_CHANGE_PROBABILITY = 0.02
 MIN_VOLATILITY = 0.0001
-MAX_VOLATILITY = 0.05
-MIN_VOLATILITY_FACTOR = 0.9
-MAX_VOLATILITY_FACTOR = 1.1
+MAX_VOLATILITY = 0.005
+NORMAL_VOLATILITY = 0.001
+VOLATILITY_PERSISTENCE = 0.99
+VOLATILITY_SHOCK_STD_DEV = 0.00005
 SENTIMENT_BIAS_FACTOR = 0.25
-FUNDAMENTAL_ESTIMATE_ERROR = 0.02
+FUNDAMENTAL_ESTIMATE_ERROR = 0.03
 
 
 type FundamentalValueEstimator = Callable[[Symbol], PriceTicks]
+
+
+@dataclass(frozen=True, kw_only=True)
+class FundamentalValueEntry:
+    """The exact hidden fundamental value at one simulation timestamp."""
+
+    timestamp: Timestamp
+    price_ticks: PriceTicks
 
 
 @dataclass(kw_only=True)
@@ -56,13 +65,16 @@ class MarketState:
             )
             self.sentiment = random.choice(alternatives)
 
-        volatility_factor = random.uniform(
-            MIN_VOLATILITY_FACTOR,
-            MAX_VOLATILITY_FACTOR,
+        volatility_change = random.gauss(
+            0,
+            VOLATILITY_SHOCK_STD_DEV,
+        )
+        mean_reverting_volatility = NORMAL_VOLATILITY + VOLATILITY_PERSISTENCE * (
+            self.volatility - NORMAL_VOLATILITY
         )
         self.volatility = min(
             MAX_VOLATILITY,
-            max(MIN_VOLATILITY, self.volatility * volatility_factor),
+            max(MIN_VOLATILITY, mean_reverting_volatility + volatility_change),
         )
 
         sentiment_direction = {
@@ -174,6 +186,16 @@ class Simulation:
             missing = ", ".join(sorted(missing_states))
             raise ValueError(f"Missing market state for instrument(s): {missing}")
 
+        self._fundamental_value_history = {
+            symbol: [
+                FundamentalValueEntry(
+                    timestamp=self._time.current_time,
+                    price_ticks=market_state.fundamental_value_ticks,
+                )
+            ]
+            for symbol, market_state in self._market_states.items()
+        }
+
     @property
     def exchange(self) -> Exchange:
         return self._exchange
@@ -235,6 +257,23 @@ class Simulation:
             symbol=instrument.symbol,
             fundamental_value_ticks=price_ticks,
         )
+        self._fundamental_value_history[instrument.symbol] = [
+            FundamentalValueEntry(
+                timestamp=self._time.current_time,
+                price_ticks=price_ticks,
+            )
+        ]
+
+    def get_fundamental_value_history(
+        self,
+        symbol: Symbol,
+    ) -> tuple[FundamentalValueEntry, ...]:
+        """Return the exact fundamental-value history for one instrument."""
+        try:
+            history = self._fundamental_value_history[symbol]
+        except KeyError as error:
+            raise ValueError(f"Symbol {symbol} does not exist") from error
+        return tuple(history)
 
     def step(self) -> Timestamp:
         """Advance one unit and give every agent one opportunity to act."""
@@ -242,6 +281,12 @@ class Simulation:
         self._exchange.expire_orders(timestamp)
         for market_state in self._market_states.values():
             market_state.step()
+            self._fundamental_value_history[market_state.symbol].append(
+                FundamentalValueEntry(
+                    timestamp=timestamp,
+                    price_ticks=market_state.fundamental_value_ticks,
+                )
+            )
         for agent in self._agents:
             agent.act(self._exchange, timestamp)
         return timestamp

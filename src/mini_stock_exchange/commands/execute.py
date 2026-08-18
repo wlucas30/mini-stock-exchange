@@ -121,6 +121,7 @@ class ShowTradesResponse:
 class ShowGraphResponse:
     symbol: Symbol
     entries: tuple[GraphEntry, ...]
+    fundamental_entries: tuple[GraphEntry, ...] = ()
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -269,4 +270,22 @@ class Executor:
                     for trade in trades
                 )
 
-                return ShowGraphResponse(symbol=symbol, entries=entries)
+                fundamental_entries = (
+                    tuple(
+                        GraphEntry(
+                            timestamp=entry.timestamp,
+                            price_ticks=entry.price_ticks,
+                        )
+                        for entry in self._simulation.get_fundamental_value_history(
+                            symbol
+                        )
+                    )
+                    if self._simulation is not None
+                    else ()
+                )
+
+                return ShowGraphResponse(
+                    symbol=symbol,
+                    entries=entries,
+                    fundamental_entries=fundamental_entries,
+                )

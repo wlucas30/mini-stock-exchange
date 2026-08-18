@@ -65,10 +65,14 @@ class Renderer:
         return formatted
 
     @staticmethod
-    def _generate_graph(symbol: Symbol, entries: tuple[GraphEntry, ...]) -> Figure:
+    def _generate_graph(
+        symbol: Symbol,
+        entries: tuple[GraphEntry, ...],
+        fundamental_entries: tuple[GraphEntry, ...],
+    ) -> Figure:
         figure, axes = plt.subplots(figsize=(8, 4.5), layout="constrained")
 
-        axes.set_title(f"{symbol} trade price history")
+        axes.set_title(f"{symbol} price history")
         axes.set_xlabel("Simulation time")
         axes.set_ylabel("Price (ticks)")
         axes.grid(axis="both", alpha=0.3)
@@ -78,7 +82,18 @@ class Renderer:
                 [entry.timestamp for entry in entries],
                 [entry.price_ticks for entry in entries],
                 marker="o",
+                label="Trade price",
             )
+
+        if fundamental_entries:
+            axes.plot(
+                [entry.timestamp for entry in fundamental_entries],
+                [entry.price_ticks for entry in fundamental_entries],
+                label="Fundamental value",
+            )
+
+        if entries or fundamental_entries:
+            axes.legend()
         else:
             axes.text(
                 0.5,
@@ -260,8 +275,12 @@ class Renderer:
                 )
                 return TextOutput(text=table)
 
-            case ShowGraphResponse(symbol=symbol, entries=entries):
-                graph = self._generate_graph(symbol, entries)
+            case ShowGraphResponse(
+                symbol=symbol,
+                entries=entries,
+                fundamental_entries=fundamental_entries,
+            ):
+                graph = self._generate_graph(symbol, entries, fundamental_entries)
                 return FigureOutput(figure=graph)
 
             case ShowTimeResponse(timestamp=timestamp):

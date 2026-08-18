@@ -86,7 +86,8 @@ mean that a bullish instrument may fall on a particular step and a bearish
 instrument may temporarily rise.
 
 Volatility is represented as a proportion of fundamental value rather than a
-fixed number of ticks. It fluctuates gradually on every simulation step within
+fixed number of ticks. It receives a small random shock on every simulation
+step, but is pulled gradually back towards its normal level and remains within
 bounded limits. Fundamental value then receives a random percentage movement,
 with bullish or bearish sentiment biasing the likely direction. Fundamental
 value is always kept at or above one tick.
