@@ -14,21 +14,23 @@ from mini_stock_exchange.exchange.models import (
     Symbol,
     Timestamp,
 )
+from mini_stock_exchange.simulation import FundamentalValueEstimator
 
 ACTION_PROBABILITY = 0.2
-PRICE_STD_DEV_FRACTION = 0.0025
+MISPRICING_THRESHOLD = 0.02
 QUANTITY_MEAN = 10.0
 QUANTITY_STD_DEV = 3.0
-MAX_ORDER_QUANTITY = 20
+MAX_ORDER_QUANTITY = 10
 MAX_ORDER_AGE = 100
 MAX_ORDERS = 1
 
 
 @dataclass(kw_only=True)
-class RandomNoiseTrader:
-    """A trading agent which submits uninformed, random order flow."""
+class FundamentalTrader:
+    """A trading agent which submits informed order flow."""
 
     participant_id: ParticipantId
+    fundamental_value_estimator: FundamentalValueEstimator
 
     def act(self, exchange: Exchange, timestamp: Timestamp) -> None:
         active_orders = exchange.get_participant_active_orders(self.participant_id)
@@ -50,6 +52,9 @@ class RandomNoiseTrader:
             return
 
         symbol: Symbol = random.choice(symbols)
+
+        value_estimate: PriceTicks = self.fundamental_value_estimator(symbol)
+
         participant: ParticipantDetails = exchange.get_participant_details(
             self.participant_id
         )
@@ -67,42 +72,38 @@ class RandomNoiseTrader:
             position.available_quantity if position is not None else 0
         )
 
-        feasible_sides: list[Side] = []
+        book = exchange.get_book_snapshot(symbol)
+        opportunities: list[tuple[Side, PriceTicks]] = []
 
-        if participant.available_cash > 0:
-            feasible_sides.append(Side.BUY)
+        if book.asks:
+            best_ask = book.asks[0].price_ticks
+            buy_threshold = value_estimate * (1 - MISPRICING_THRESHOLD)
 
-        if available_quantity > 0:
-            feasible_sides.append(Side.SELL)
+            if participant.available_cash >= best_ask and best_ask <= buy_threshold:
+                opportunities.append((Side.BUY, best_ask))
 
-        if not feasible_sides:
+        if book.bids:
+            best_bid = book.bids[0].price_ticks
+            sell_threshold = value_estimate * (1 + MISPRICING_THRESHOLD)
+
+            if available_quantity > 0 and best_bid >= sell_threshold:
+                opportunities.append((Side.SELL, best_bid))
+
+        if not opportunities:
             return
 
-        side: Side = random.choice(feasible_sides)
-
-        ref_price_ticks = exchange.get_reference_price(symbol)
-        if ref_price_ticks is None:
-            return
+        side, price_ticks = random.choice(opportunities)
 
         if side is Side.BUY:
-            maximum_quantity = participant.available_cash // ref_price_ticks
+            maximum_quantity = min(
+                participant.available_cash // price_ticks,
+                MAX_ORDER_QUANTITY,
+            )
         else:
-            maximum_quantity = available_quantity
-
-        if maximum_quantity == 0:
-            return
-
-        price_std_dev = max(1.0, ref_price_ticks * PRICE_STD_DEV_FRACTION)
-        price_ticks: PriceTicks = max(
-            1,
-            round(random.gauss(ref_price_ticks, price_std_dev)),
-        )
-
-        if side is Side.BUY:
-            affordable_quantity = participant.available_cash // price_ticks
-            maximum_quantity = min(affordable_quantity, MAX_ORDER_QUANTITY)
-        else:
-            maximum_quantity = min(available_quantity, MAX_ORDER_QUANTITY)
+            maximum_quantity = min(
+                available_quantity,
+                MAX_ORDER_QUANTITY,
+            )
 
         if maximum_quantity < 1:
             return
