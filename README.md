@@ -48,8 +48,9 @@ shares and do not submit orders.
 
 `config/default_agent_positions.csv` allocates the complete initial supply of
 each instrument directly to participants. The default configuration divides
-90% of each instrument between the two long-term holders and gives each market
-maker 100 units as working inventory. The starting price is recorded as every
+92.5% of each instrument between the two long-term holders. Each market maker
+starts at its 15-unit target, each noise trader receives 10 units, and each
+fundamental trader receives 20 units. The starting price is recorded as every
 holder's acquisition cost.
 
 Simulation time starts at zero and advances once per real second. Use
