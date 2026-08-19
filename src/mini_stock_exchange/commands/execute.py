@@ -16,6 +16,10 @@ from mini_stock_exchange.exchange.models import (
 )
 from mini_stock_exchange.exchange.order_book import BookSnapshot
 from mini_stock_exchange.simulation import Simulation
+from mini_stock_exchange.statistics import (
+    InstrumentStatistics,
+    calculate_instrument_statistics,
+)
 
 from .command import (
     AddInstrument,
@@ -30,6 +34,7 @@ from .command import (
     ShowBook,
     ShowGraph,
     ShowParticipant,
+    ShowStats,
     ShowTime,
     ShowTrades,
 )
@@ -47,6 +52,7 @@ type ExecutorResponse = (
     | ShowTradesResponse
     | ShowTimeResponse
     | ShowGraphResponse
+    | ShowStatsResponse
     | ShowParticipantResponse
     | SetTimeMultiplierResponse
 )
@@ -121,6 +127,11 @@ class ShowGraphResponse:
     entries: tuple[GraphEntry, ...]
     fundamental_entries: tuple[GraphEntry, ...] = ()
     midpoint_entries: tuple[GraphEntry, ...] = ()
+
+
+@dataclass(frozen=True, kw_only=True)
+class ShowStatsResponse:
+    statistics: InstrumentStatistics
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -298,3 +309,22 @@ class Executor:
                     fundamental_entries=fundamental_entries,
                     midpoint_entries=midpoint_entries,
                 )
+
+            case ShowStats(symbol=symbol):
+                if self._simulation is None:
+                    return ErrorResponse(message="Simulation is unavailable")
+
+                try:
+                    statistics = calculate_instrument_statistics(
+                        symbol=symbol,
+                        current_time=self._simulation.current_time,
+                        trades=self._exchange.get_trades_by_symbol(symbol),
+                        book=self._exchange.get_book_snapshot(symbol),
+                        midpoint_history=self._simulation.get_midpoint_history(symbol),
+                    )
+                except ValueError as error:
+                    return ErrorResponse(
+                        message=f"Failed to calculate statistics: {error}"
+                    )
+
+                return ShowStatsResponse(statistics=statistics)

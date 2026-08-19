@@ -13,6 +13,7 @@ from mini_stock_exchange.commands.command import (
     ShowBook,
     ShowGraph,
     ShowParticipant,
+    ShowStats,
     ShowTime,
     ShowTrades,
 )
@@ -94,6 +95,7 @@ def parse(source: str) -> Command:
         ("SHOW TRADES", ShowTrades()),
         ("SHOW TIME", ShowTime()),
         ("SHOW GRAPH AAPL", ShowGraph(symbol="AAPL")),
+        ("SHOW STATS AAPL", ShowStats(symbol="AAPL")),
     ],
 )
 def test_parses_commands(source: str, expected: Command) -> None:

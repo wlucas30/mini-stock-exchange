@@ -181,6 +181,7 @@ show-command =
     | "SHOW", "TRADES"
     | "SHOW", "TIME"
     | "SHOW", "GRAPH", symbol
+    | "SHOW", "STATS", symbol
     ;
 
 participant-id =
@@ -663,6 +664,30 @@ per step.
 \begin{lstlisting}
 FAST FORWARD 30
 \end{lstlisting}
+
+\subsection{\texttt{SHOW STATS}}
+
+\subsubsection*{Syntax}
+
+\begin{lstlisting}
+SHOW STATS <symbol>
+\end{lstlisting}
+
+\subsubsection*{Description}
+
+Displays observed market statistics for the specified instrument over the
+last 1,000 simulation steps. Statistics include the latest trade and midpoint,
+the current bid-ask spread, trade count, traded volume, volume-weighted average
+price, and realised midpoint volatility. Volatility is the sample standard
+deviation of consecutive midpoint log returns and is not annualised.
+
+\subsubsection*{Example}
+
+\begin{lstlisting}
+SHOW STATS AAPL
+\end{lstlisting}
+
+The command fails if the specified instrument does not exist.
 
 \subsection{\texttt{SHOW GRAPH}}
 

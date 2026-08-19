@@ -24,6 +24,7 @@ type Command = (
     | ShowTrades
     | ShowTime
     | ShowGraph
+    | ShowStats
     | ShowParticipant
     | SetTimeMultiplier
 )
@@ -99,4 +100,9 @@ class ShowTime:
 
 @dataclass(frozen=True, kw_only=True)
 class ShowGraph:
+    symbol: Symbol
+
+
+@dataclass(frozen=True, kw_only=True)
+class ShowStats:
     symbol: Symbol

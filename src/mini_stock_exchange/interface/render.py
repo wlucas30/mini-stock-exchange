@@ -23,6 +23,7 @@ from mini_stock_exchange.commands.execute import (
     ShowBookResponse,
     ShowGraphResponse,
     ShowParticipantResponse,
+    ShowStatsResponse,
     ShowTimeResponse,
     ShowTradesResponse,
 )
@@ -305,6 +306,56 @@ class Renderer:
                     midpoint_entries,
                 )
                 return FigureOutput(figure=graph)
+
+            case ShowStatsResponse(statistics=statistics):
+                rows = (
+                    (
+                        "Last trade",
+                        statistics.last_trade_price_ticks
+                        if statistics.last_trade_price_ticks is not None
+                        else "N/A",
+                    ),
+                    (
+                        "Book midpoint",
+                        statistics.midpoint_ticks
+                        if statistics.midpoint_ticks is not None
+                        else "N/A",
+                    ),
+                    (
+                        "Bid-ask spread",
+                        statistics.spread_ticks
+                        if statistics.spread_ticks is not None
+                        else "N/A",
+                    ),
+                    (
+                        "Spread",
+                        f"{statistics.spread_percent:.4f}%"
+                        if statistics.spread_percent is not None
+                        else "N/A",
+                    ),
+                    ("Trade count", statistics.trade_count),
+                    ("Traded volume", statistics.traded_volume),
+                    (
+                        "VWAP",
+                        f"{statistics.vwap_ticks:.2f}"
+                        if statistics.vwap_ticks is not None
+                        else "N/A",
+                    ),
+                    (
+                        "Midpoint volatility",
+                        f"{statistics.midpoint_volatility:.4%}"
+                        if statistics.midpoint_volatility is not None
+                        else "N/A",
+                    ),
+                )
+                table = tabulate(rows, headers=("METRIC", "VALUE"), tablefmt="simple")
+                return TextOutput(
+                    text=(
+                        f"STATS {statistics.symbol}\n"
+                        f"WINDOW {statistics.window_start}-{statistics.window_end}\n\n"
+                        f"{table}"
+                    )
+                )
 
             case ShowTimeResponse(timestamp=timestamp):
                 return TextOutput(text=f"Current time: {timestamp}")

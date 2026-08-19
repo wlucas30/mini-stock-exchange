@@ -23,6 +23,7 @@ class TokenType(Enum):
     SELL = auto()
     SET = auto()
     SHOW = auto()
+    STATS = auto()
     TIME = auto()
     TRADES = auto()
     VOLUME = auto()
@@ -53,6 +54,7 @@ KEYWORDS: dict[str, TokenType] = {
     "SELL": TokenType.SELL,
     "SET": TokenType.SET,
     "SHOW": TokenType.SHOW,
+    "STATS": TokenType.STATS,
     "TIME": TokenType.TIME,
     "TRADES": TokenType.TRADES,
     "VOLUME": TokenType.VOLUME,
