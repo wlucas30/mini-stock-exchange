@@ -7,10 +7,8 @@ from typing import Protocol
 from mini_stock_exchange.exchange.exchange import Exchange
 from mini_stock_exchange.exchange.models import (
     Instrument,
-    Order,
     ParticipantId,
     PriceTicks,
-    Quantity,
     Symbol,
     Timestamp,
 )
@@ -24,14 +22,23 @@ class Sentiment(Enum):
 
 SENTIMENT_CHANGE_PROBABILITY = 0.02
 MIN_VOLATILITY = 0.0001
-MAX_VOLATILITY = 0.05
-MIN_VOLATILITY_FACTOR = 0.9
-MAX_VOLATILITY_FACTOR = 1.1
+MAX_VOLATILITY = 0.005
+NORMAL_VOLATILITY = 0.001
+VOLATILITY_PERSISTENCE = 0.99
+VOLATILITY_SHOCK_STD_DEV = 0.00005
 SENTIMENT_BIAS_FACTOR = 0.25
 FUNDAMENTAL_ESTIMATE_ERROR = 0.02
 
 
 type FundamentalValueEstimator = Callable[[Symbol], PriceTicks]
+
+
+@dataclass(frozen=True, kw_only=True)
+class PriceHistoryEntry:
+    """A price observed at one simulation timestamp."""
+
+    timestamp: Timestamp
+    price_ticks: PriceTicks
 
 
 @dataclass(kw_only=True)
@@ -57,13 +64,16 @@ class MarketState:
             )
             self.sentiment = random.choice(alternatives)
 
-        volatility_factor = random.uniform(
-            MIN_VOLATILITY_FACTOR,
-            MAX_VOLATILITY_FACTOR,
+        volatility_change = random.gauss(
+            0,
+            VOLATILITY_SHOCK_STD_DEV,
+        )
+        mean_reverting_volatility = NORMAL_VOLATILITY + VOLATILITY_PERSISTENCE * (
+            self.volatility - NORMAL_VOLATILITY
         )
         self.volatility = min(
             MAX_VOLATILITY,
-            max(MIN_VOLATILITY, self.volatility * volatility_factor),
+            max(MIN_VOLATILITY, mean_reverting_volatility + volatility_change),
         )
 
         sentiment_direction = {
@@ -150,21 +160,22 @@ class Simulation:
         exchange: Exchange,
         simulation_time: SimulationTime,
         agents: Iterable[SimulationAgent] = (),
-        market_states: Iterable[MarketState] = (),
+        market_states: dict[Symbol, MarketState] | None = None,
+        initial_position_holder_ids: Iterable[ParticipantId] = (),
     ) -> None:
         self._exchange = exchange
         self._time = simulation_time
         self._agents = list(agents)
-        self._market_states: dict[Symbol, MarketState] = {}
+        self._initial_position_holder_ids = tuple(initial_position_holder_ids)
+        self._market_states = market_states if market_states is not None else {}
 
-        for market_state in market_states:
-            if market_state.symbol in self._market_states:
-                raise ValueError(f"Duplicate market state for {market_state.symbol}")
+        for symbol, market_state in self._market_states.items():
+            if symbol != market_state.symbol:
+                raise ValueError(f"Market state key does not match symbol: {symbol}")
             if market_state.symbol not in exchange.get_instrument_symbols():
                 raise ValueError(
                     f"Market state symbol {market_state.symbol} does not exist"
                 )
-            self._market_states[market_state.symbol] = market_state
 
         missing_states = (
             set(exchange.get_instrument_symbols()) - self._market_states.keys()
@@ -172,6 +183,19 @@ class Simulation:
         if missing_states:
             missing = ", ".join(sorted(missing_states))
             raise ValueError(f"Missing market state for instrument(s): {missing}")
+
+        self._fundamental_value_history = {
+            symbol: [
+                PriceHistoryEntry(
+                    timestamp=self._time.current_time,
+                    price_ticks=market_state.fundamental_value_ticks,
+                )
+            ]
+            for symbol, market_state in self._market_states.items()
+        }
+        self._midpoint_history: dict[Symbol, list[PriceHistoryEntry]] = {
+            symbol: [] for symbol in self._market_states
+        }
 
     @property
     def exchange(self) -> Exchange:
@@ -192,33 +216,99 @@ class Simulation:
     def issue_instrument(
         self,
         instrument: Instrument,
-        issuer_id: ParticipantId,
         price_ticks: PriceTicks,
-        volume: Quantity,
-    ) -> Order:
-        """Issue an instrument and create its initial hidden market state."""
+    ) -> None:
+        """Allocate a new instrument across the initial position holders."""
         if instrument.symbol in self._market_states:
             raise ValueError(f"Market state already exists: {instrument.symbol}")
+        if not self._initial_position_holder_ids:
+            raise ValueError("No participants are configured to receive new supply")
+        if price_ticks <= 0:
+            raise ValueError("Issue price must be positive")
 
-        order = self._exchange.issue_instrument(
-            instrument=instrument,
-            issuer_id=issuer_id,
-            price_ticks=price_ticks,
-            volume=volume,
+        participant_ids = {
+            participant.participant_id
+            for participant in self._exchange.get_participant_summaries()
+        }
+        unknown_holders = set(self._initial_position_holder_ids) - participant_ids
+        if unknown_holders:
+            unknown = ", ".join(sorted(unknown_holders))
+            raise ValueError(f"Initial position holder(s) do not exist: {unknown}")
+
+        self._exchange.add_instrument(instrument)
+        base_quantity, remainder = divmod(
+            instrument.total_supply,
+            len(self._initial_position_holder_ids),
         )
+        for index, participant_id in enumerate(self._initial_position_holder_ids):
+            quantity = base_quantity + (1 if index < remainder else 0)
+            if quantity == 0:
+                continue
+            self._exchange.allocate_initial_position(
+                participant_id=participant_id,
+                symbol=instrument.symbol,
+                quantity=quantity,
+                price_ticks=price_ticks,
+            )
+
         self._market_states[instrument.symbol] = make_initial_market_state(
             symbol=instrument.symbol,
             fundamental_value_ticks=price_ticks,
         )
-        return order
+        self._fundamental_value_history[instrument.symbol] = [
+            PriceHistoryEntry(
+                timestamp=self._time.current_time,
+                price_ticks=price_ticks,
+            )
+        ]
+        self._midpoint_history[instrument.symbol] = []
+
+    def get_fundamental_value_history(
+        self,
+        symbol: Symbol,
+    ) -> tuple[PriceHistoryEntry, ...]:
+        """Return the exact fundamental-value history for one instrument."""
+        try:
+            history = self._fundamental_value_history[symbol]
+        except KeyError as error:
+            raise ValueError(f"Symbol {symbol} does not exist") from error
+        return tuple(history)
+
+    def get_midpoint_history(
+        self,
+        symbol: Symbol,
+    ) -> tuple[PriceHistoryEntry, ...]:
+        """Return the order-book midpoint history for one instrument."""
+        try:
+            history = self._midpoint_history[symbol]
+        except KeyError as error:
+            raise ValueError(f"Symbol {symbol} does not exist") from error
+        return tuple(history)
 
     def step(self) -> Timestamp:
         """Advance one unit and give every agent one opportunity to act."""
         timestamp = self._time.step()
+        self._exchange.expire_orders(timestamp)
         for market_state in self._market_states.values():
             market_state.step()
+            self._fundamental_value_history[market_state.symbol].append(
+                PriceHistoryEntry(
+                    timestamp=timestamp,
+                    price_ticks=market_state.fundamental_value_ticks,
+                )
+            )
         for agent in self._agents:
             agent.act(self._exchange, timestamp)
+        for symbol in self._market_states:
+            book = self._exchange.get_book_snapshot(symbol)
+            if book.bids and book.asks:
+                midpoint = (book.bids[0].price_ticks + book.asks[0].price_ticks) // 2
+                self._midpoint_history[symbol].append(
+                    PriceHistoryEntry(
+                        timestamp=timestamp,
+                        price_ticks=midpoint,
+                    )
+                )
         return timestamp
 
     def advance(self) -> Timestamp:

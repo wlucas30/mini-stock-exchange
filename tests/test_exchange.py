@@ -14,7 +14,7 @@ from mini_stock_exchange.exchange.models import (
 # Helper for creating a dummy exchange
 def make_exchange(*participants: Participant) -> Exchange:
     exchange = Exchange(time=lambda: 123)
-    exchange.add_instrument(Instrument(symbol="AAPL"))
+    exchange.add_instrument(Instrument(symbol="AAPL", total_supply=1_000))
     for participant in participants:
         exchange.add_participant(participant)
     return exchange

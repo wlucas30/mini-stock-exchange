@@ -5,7 +5,15 @@ from collections.abc import Callable
 import pytest
 
 from mini_stock_exchange.exchange.exchange import Exchange
-from mini_stock_exchange.exchange.models import Instrument, Participant, Timestamp
+from mini_stock_exchange.exchange.models import (
+    Instrument,
+    OrderStatus,
+    OrderType,
+    Participant,
+    RequestForOrder,
+    Side,
+    Timestamp,
+)
 from mini_stock_exchange.simulation import (
     MarketState,
     Sentiment,
@@ -51,6 +59,41 @@ def test_step_advances_once_and_invokes_agents() -> None:
     assert agent.timestamps == [11]
 
 
+def test_step_expires_due_limit_order_and_releases_reserved_cash() -> None:
+    simulation_time = SimulationTime(current_time=10)
+    exchange = Exchange(time=lambda: simulation_time.current_time)
+    exchange.add_instrument(Instrument(symbol="AAPL", total_supply=100))
+    exchange.add_participant(Participant("BUYER", "Buyer", balance=1_000))
+    simulation = Simulation(
+        exchange,
+        simulation_time,
+        market_states={
+            "AAPL": MarketState(
+                symbol="AAPL",
+                fundamental_value_ticks=100,
+                sentiment=Sentiment.NEUTRAL,
+                volatility=0.001,
+            )
+        },
+    )
+    order = exchange.place_order(
+        RequestForOrder(
+            participant_id="BUYER",
+            symbol="AAPL",
+            side=Side.BUY,
+            order_type=OrderType.LIMIT,
+            original_quantity=5,
+            price_ticks=100,
+            expires_at=11,
+        )
+    )
+
+    simulation.step()
+
+    assert order.status is OrderStatus.CANCELLED
+    assert exchange.get_participant_details("BUYER").available_cash == 1_000
+
+
 def test_advance_runs_one_step_per_multiplier_unit() -> None:
     agent = RecordingAgent()
     simulation, _ = make_simulation(
@@ -94,17 +137,23 @@ def test_fast_forward_runs_every_intermediate_step() -> None:
 def test_issue_instrument_creates_hidden_market_state() -> None:
     simulation, _ = make_simulation()
     simulation.exchange.add_participant(
-        Participant("EXCHANGE_MASTER", "Exchange Master", balance=0)
+        Participant("MARKET_MAKER", "Market Maker", balance=0)
+    )
+
+    market_states: dict[str, MarketState] = {}
+    simulation = Simulation(
+        simulation.exchange,
+        SimulationTime(),
+        market_states=market_states,
+        initial_position_holder_ids=("MARKET_MAKER",),
     )
 
     simulation.issue_instrument(
-        instrument=Instrument(symbol="AAPL"),
-        issuer_id="EXCHANGE_MASTER",
+        instrument=Instrument(symbol="AAPL", total_supply=100),
         price_ticks=10_000,
-        volume=100,
     )
 
-    assert simulation._market_states == {
+    assert market_states == {
         "AAPL": MarketState(
             symbol="AAPL",
             fundamental_value_ticks=10_000,
@@ -117,7 +166,7 @@ def test_issue_instrument_creates_hidden_market_state() -> None:
 def test_simulation_requires_market_state_for_existing_instrument() -> None:
     simulation_time = SimulationTime()
     exchange = Exchange(time=lambda: simulation_time.current_time)
-    exchange.add_instrument(Instrument(symbol="AAPL"))
+    exchange.add_instrument(Instrument(symbol="AAPL", total_supply=100))
 
     with pytest.raises(ValueError, match="Missing market state for instrument"):
         Simulation(exchange, simulation_time)
