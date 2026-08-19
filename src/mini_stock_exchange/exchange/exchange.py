@@ -1,7 +1,6 @@
 from collections.abc import Callable
 
 from .models import (
-    ActiveOrderSummary,
     Cash,
     Instrument,
     Order,
@@ -119,6 +118,12 @@ class Exchange:
             request.price_ticks is None or request.price_ticks <= 0
         ):
             raise ValueError("Limit orders must have a positive price")
+
+        if request.expires_at is not None:
+            if request.order_type is not OrderType.LIMIT:
+                raise ValueError("Only limit orders can have an expiry time")
+            if request.expires_at <= self._time():
+                raise ValueError("Order expiry time must be in the future")
 
         if request.original_quantity <= 0:
             raise ValueError("Must have positive quantity")
@@ -387,6 +392,16 @@ class Exchange:
         self.require_order_ownership(participant_id, order_id)
         self.cancel_order(order_id)
 
+    def expire_orders(self, timestamp: Timestamp) -> None:
+        """Cancel every active limit order whose expiry time is due."""
+        expiring_order_ids = tuple(
+            order.order_id
+            for order in self._active_orders.values()
+            if order.expires_at is not None and order.expires_at <= timestamp
+        )
+        for order_id in expiring_order_ids:
+            self.cancel_order(order_id)
+
     def add_instrument(self, instrument: Instrument) -> None:
         """Adds an instrument to the exchange."""
         if instrument.symbol in self._instruments:
@@ -395,55 +410,28 @@ class Exchange:
         self._instruments[instrument.symbol] = instrument
         self._order_books[instrument.symbol] = OrderBook(instrument)
 
-    def register_instrument_issue(
+    def allocate_initial_position(
         self,
-        instrument: Instrument,
-        issuer_id: ParticipantId,
+        participant_id: ParticipantId,
+        symbol: Symbol,
+        quantity: Quantity,
         price_ticks: PriceTicks,
-        volume: Quantity,
     ) -> None:
-        """Register an instrument and credit its issued volume to the issuer."""
-        if issuer_id not in self._participants:
-            raise ValueError(f"Participant {issuer_id} does not exist")
+        """Allocate initial instrument ownership and its acquisition cost."""
+        participant = self._participants.get(participant_id)
+        if participant is None:
+            raise ValueError(f"Participant {participant_id} does not exist")
+        if symbol not in self._instruments:
+            raise ValueError(f"Symbol {symbol} does not exist")
+        if quantity <= 0:
+            raise ValueError("Initial position quantity must be positive")
         if price_ticks <= 0:
-            raise ValueError("Issue price must be positive")
-        if volume <= 0:
-            raise ValueError("Issue volume must be positive")
+            raise ValueError("Initial position price must be positive")
 
-        self.add_instrument(instrument)
-        issuer = self._participants[issuer_id]
-        issuer.positions[instrument.symbol] = (
-            issuer.positions.get(instrument.symbol, 0) + volume
-        )
-        cost_basis_key = (issuer_id, instrument.symbol)
+        participant.positions[symbol] = participant.positions.get(symbol, 0) + quantity
+        cost_basis_key = (participant_id, symbol)
         self._position_cost_basis[cost_basis_key] = (
-            self._position_cost_basis.get(cost_basis_key, 0) + price_ticks * volume
-        )
-
-    def issue_instrument(
-        self,
-        instrument: Instrument,
-        issuer_id: ParticipantId,
-        price_ticks: PriceTicks,
-        volume: Quantity,
-    ) -> Order:
-        """Register an instrument and list its issued volume for sale."""
-        self.register_instrument_issue(
-            instrument=instrument,
-            issuer_id=issuer_id,
-            price_ticks=price_ticks,
-            volume=volume,
-        )
-
-        return self.place_order(
-            RequestForOrder(
-                participant_id=issuer_id,
-                symbol=instrument.symbol,
-                side=Side.SELL,
-                order_type=OrderType.LIMIT,
-                original_quantity=volume,
-                price_ticks=price_ticks,
-            )
+            self._position_cost_basis.get(cost_basis_key, 0) + price_ticks * quantity
         )
 
     def add_participant(self, participant: Participant) -> None:
@@ -476,6 +464,7 @@ class Exchange:
             sequence=self._generate_sequence_number(),
             timestamp=self._time(),
             status=OrderStatus.OPEN,
+            expires_at=request.expires_at,
         )
 
         self._reserve_order(order)
@@ -492,6 +481,10 @@ class Exchange:
     def get_instrument_symbols(self) -> tuple[Symbol, ...]:
         """Return the symbols of all registered instruments."""
         return tuple(self._instruments)
+
+    def get_instruments(self) -> tuple[Instrument, ...]:
+        """Return all registered instruments in registration order."""
+        return tuple(self._instruments.values())
 
     def get_participant_summaries(self) -> tuple[ParticipantSummary, ...]:
         """Return summaries of all registered participants."""
@@ -597,23 +590,6 @@ class Exchange:
         """Return the number of active orders held by one participant."""
         return sum(
             1
-            for order in self._active_orders.values()
-            if order.participant_id == participant_id
-        )
-
-    def get_participant_active_orders(
-        self,
-        participant_id: ParticipantId,
-    ) -> tuple[ActiveOrderSummary, ...]:
-        """Return immutable summaries of one participant's active orders."""
-        if participant_id not in self._participants:
-            raise ValueError(f"Participant {participant_id} does not exist")
-
-        return tuple(
-            ActiveOrderSummary(
-                order_id=order.order_id,
-                timestamp=order.timestamp,
-            )
             for order in self._active_orders.values()
             if order.participant_id == participant_id
         )

@@ -65,10 +65,15 @@ class Renderer:
         return formatted
 
     @staticmethod
-    def _generate_graph(symbol: Symbol, entries: tuple[GraphEntry, ...]) -> Figure:
+    def _generate_graph(
+        symbol: Symbol,
+        entries: tuple[GraphEntry, ...],
+        fundamental_entries: tuple[GraphEntry, ...],
+        midpoint_entries: tuple[GraphEntry, ...],
+    ) -> Figure:
         figure, axes = plt.subplots(figsize=(8, 4.5), layout="constrained")
 
-        axes.set_title(f"{symbol} trade price history")
+        axes.set_title(f"{symbol} price history")
         axes.set_xlabel("Simulation time")
         axes.set_ylabel("Price (ticks)")
         axes.grid(axis="both", alpha=0.3)
@@ -77,8 +82,32 @@ class Renderer:
             axes.plot(
                 [entry.timestamp for entry in entries],
                 [entry.price_ticks for entry in entries],
-                marker="o",
+                color="#0072B2",
+                linewidth=1,
+                label="Trade price",
             )
+
+        if midpoint_entries:
+            axes.plot(
+                [entry.timestamp for entry in midpoint_entries],
+                [entry.price_ticks for entry in midpoint_entries],
+                color="#CC79A7",
+                linewidth=1.5,
+                linestyle="--",
+                label="Book midpoint",
+            )
+
+        if fundamental_entries:
+            axes.plot(
+                [entry.timestamp for entry in fundamental_entries],
+                [entry.price_ticks for entry in fundamental_entries],
+                color="#E69F00",
+                linewidth=1.5,
+                label="Fundamental value",
+            )
+
+        if entries or midpoint_entries or fundamental_entries:
+            axes.legend()
         else:
             axes.text(
                 0.5,
@@ -99,14 +128,12 @@ class Renderer:
             case AddInstrumentResponse(
                 instrument=instrument,
                 price_ticks=price_ticks,
-                volume=volume,
-                initial_order_id=initial_order_id,
             ):
                 return TextOutput(
                     text=(
-                        f"Successfully added instrument {instrument.symbol} and "
-                        f"listed {volume} units at {price_ticks} ticks "
-                        f"with order ID {initial_order_id}."
+                        f"Successfully added instrument {instrument.symbol} with "
+                        f"{instrument.total_supply} units allocated at "
+                        f"{price_ticks} ticks."
                     )
                 )
 
@@ -129,10 +156,13 @@ class Renderer:
             case FastForwardResponse(timestamp=timestamp):
                 return TextOutput(text=f"Current time: {timestamp}")
 
-            case ListInstrumentsResponse(symbols=symbols):
+            case ListInstrumentsResponse(instruments=instruments):
                 table = tabulate(
-                    ((symbol,) for symbol in symbols),
-                    headers=("INSTRUMENT",),
+                    (
+                        (instrument.symbol, instrument.total_supply)
+                        for instrument in instruments
+                    ),
+                    headers=("INSTRUMENT", "TOTAL SUPPLY"),
                     tablefmt="simple",
                 )
                 return TextOutput(text=table)
@@ -262,8 +292,18 @@ class Renderer:
                 )
                 return TextOutput(text=table)
 
-            case ShowGraphResponse(symbol=symbol, entries=entries):
-                graph = self._generate_graph(symbol, entries)
+            case ShowGraphResponse(
+                symbol=symbol,
+                entries=entries,
+                fundamental_entries=fundamental_entries,
+                midpoint_entries=midpoint_entries,
+            ):
+                graph = self._generate_graph(
+                    symbol,
+                    entries,
+                    fundamental_entries,
+                    midpoint_entries,
+                )
                 return FigureOutput(figure=graph)
 
             case ShowTimeResponse(timestamp=timestamp):

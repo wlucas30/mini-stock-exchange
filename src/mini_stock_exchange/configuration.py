@@ -3,19 +3,21 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
-from mini_stock_exchange.agents import FundamentalTrader, RandomNoiseTrader
+from mini_stock_exchange.agents import (
+    FundamentalTrader,
+    LongTermHolderAgent,
+    MarketMakerAgent,
+    RandomNoiseTrader,
+)
 from mini_stock_exchange.commands.lexer import KEYWORDS, is_identifier
 from mini_stock_exchange.exchange.exchange import Exchange
 from mini_stock_exchange.exchange.models import (
     Cash,
     Instrument,
-    OrderType,
     Participant,
     ParticipantId,
     PriceTicks,
     Quantity,
-    RequestForOrder,
-    Side,
     Symbol,
 )
 from mini_stock_exchange.simulation import (
@@ -25,12 +27,9 @@ from mini_stock_exchange.simulation import (
     make_initial_market_state,
 )
 
-EXCHANGE_MASTER_ID = "EXCHANGE_MASTER"
-EXCHANGE_MASTER_NAME = "Exchange Master"
 EXPECTED_COLUMNS = ("symbol", "starting_price_ticks", "initial_quantity")
 EXPECTED_AGENT_COLUMNS = ("participant_id", "display_name", "balance", "strategy")
-INITIAL_SELL_ORDER_COUNT = 20
-INITIAL_PRICE_DEVIATION = 0.02
+EXPECTED_POSITION_COLUMNS = ("participant_id", "symbol", "quantity")
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -46,6 +45,13 @@ class DefaultAgent:
     display_name: str
     balance: Cash
     strategy: str
+
+
+@dataclass(frozen=True, kw_only=True)
+class DefaultPosition:
+    participant_id: ParticipantId
+    symbol: Symbol
+    quantity: Quantity
 
 
 def _make_random_noise_trader(
@@ -65,11 +71,30 @@ def _make_fundamental_trader(
     )
 
 
+def _make_market_maker(
+    participant_id: ParticipantId,
+    fundamental_value_estimator: FundamentalValueEstimator,
+) -> SimulationAgent:
+    return MarketMakerAgent(
+        participant_id=participant_id,
+        fundamental_value_estimator=fundamental_value_estimator,
+    )
+
+
+def _make_long_term_holder(
+    participant_id: ParticipantId,
+    fundamental_value_estimator: FundamentalValueEstimator,
+) -> SimulationAgent:
+    return LongTermHolderAgent(participant_id=participant_id)
+
+
 AGENT_FACTORIES: dict[
     str, Callable[[ParticipantId, FundamentalValueEstimator], SimulationAgent]
 ] = {
     "RandomNoise": _make_random_noise_trader,
     "Fundamental": _make_fundamental_trader,
+    "MarketMaker": _make_market_maker,
+    "LongTermHolder": _make_long_term_holder,
 }
 
 
@@ -181,68 +206,106 @@ def read_default_agents(path: Path) -> tuple[DefaultAgent, ...]:
     return tuple(agents)
 
 
-def _initial_sell_orders(
-    price_ticks: PriceTicks,
-    volume: Quantity,
-) -> tuple[tuple[PriceTicks, Quantity], ...]:
-    order_count = min(INITIAL_SELL_ORDER_COUNT, volume)
-    base_quantity, remainder = divmod(volume, order_count)
+def read_default_positions(path: Path) -> tuple[DefaultPosition, ...]:
+    """Read initial participant position allocations from a CSV file."""
+    with path.open(newline="", encoding="utf-8") as file:
+        reader = csv.DictReader(file)
 
-    if order_count == 1:
-        return ((price_ticks, volume),)
+        if tuple(reader.fieldnames or ()) != EXPECTED_POSITION_COLUMNS:
+            raise ValueError(
+                "Default position CSV must have columns: "
+                + ", ".join(EXPECTED_POSITION_COLUMNS)
+            )
 
-    orders: list[tuple[PriceTicks, Quantity]] = []
-    for index in range(order_count):
-        position = (2 * index / (order_count - 1)) - 1
-        order_price = max(
-            1,
-            round(price_ticks * (1 + position * INITIAL_PRICE_DEVIATION)),
+        positions: list[DefaultPosition] = []
+        seen_allocations: set[tuple[ParticipantId, Symbol]] = set()
+        for row_number, row in enumerate(reader, start=2):
+            participant_id = row["participant_id"]
+            symbol = row["symbol"]
+            allocation = (participant_id, symbol)
+            if allocation in seen_allocations:
+                raise ValueError(
+                    f"Row {row_number}: duplicate initial position for "
+                    f"{participant_id} and {symbol}"
+                )
+
+            positions.append(
+                DefaultPosition(
+                    participant_id=participant_id,
+                    symbol=symbol,
+                    quantity=_parse_positive_integer(
+                        row["quantity"],
+                        "quantity",
+                        row_number,
+                    ),
+                )
+            )
+            seen_allocations.add(allocation)
+
+    return tuple(positions)
+
+
+def seed_exchange(
+    exchange: Exchange,
+    instrument_path: Path,
+    position_path: Path,
+) -> tuple[MarketState, ...]:
+    """Add configured instruments and allocate their initial supply."""
+    instruments = read_default_instruments(instrument_path)
+    positions = read_default_positions(position_path)
+    instruments_by_symbol = {
+        instrument.symbol: instrument for instrument in instruments
+    }
+    participant_ids = {
+        participant.participant_id
+        for participant in exchange.get_participant_summaries()
+    }
+
+    allocated_by_symbol: dict[Symbol, Quantity] = {}
+    for position in positions:
+        if position.participant_id not in participant_ids:
+            raise ValueError(
+                f"Initial position participant does not exist: "
+                f"{position.participant_id}"
+            )
+        if position.symbol not in instruments_by_symbol:
+            raise ValueError(
+                f"Initial position symbol does not exist: {position.symbol}"
+            )
+        allocated_by_symbol[position.symbol] = (
+            allocated_by_symbol.get(position.symbol, 0) + position.quantity
         )
-        order_quantity = base_quantity + (1 if index < remainder else 0)
-        orders.append((order_price, order_quantity))
 
-    return tuple(orders)
-
-
-def seed_exchange(exchange: Exchange, path: Path) -> tuple[MarketState, ...]:
-    """Add configured instruments and initial Exchange Master sell orders."""
-    instruments = read_default_instruments(path)
-    exchange_master = Participant(
-        participant_id=EXCHANGE_MASTER_ID,
-        display_name=EXCHANGE_MASTER_NAME,
-        balance=0,
-        positions={},
-    )
-
-    exchange.add_participant(exchange_master)
+    for instrument in instruments:
+        allocated = allocated_by_symbol.get(instrument.symbol, 0)
+        if allocated != instrument.initial_quantity:
+            raise ValueError(
+                f"Initial positions for {instrument.symbol} allocate {allocated} "
+                f"of {instrument.initial_quantity} units"
+            )
 
     market_states: list[MarketState] = []
     for instrument in instruments:
-        exchange.register_instrument_issue(
-            instrument=Instrument(symbol=instrument.symbol),
-            issuer_id=EXCHANGE_MASTER_ID,
-            price_ticks=instrument.starting_price_ticks,
-            volume=instrument.initial_quantity,
-        )
-        for price_ticks, quantity in _initial_sell_orders(
-            instrument.starting_price_ticks,
-            instrument.initial_quantity,
-        ):
-            exchange.place_order(
-                RequestForOrder(
-                    participant_id=EXCHANGE_MASTER_ID,
-                    symbol=instrument.symbol,
-                    side=Side.SELL,
-                    order_type=OrderType.LIMIT,
-                    original_quantity=quantity,
-                    price_ticks=price_ticks,
-                )
+        exchange.add_instrument(
+            Instrument(
+                symbol=instrument.symbol,
+                total_supply=instrument.initial_quantity,
             )
+        )
         market_states.append(
             make_initial_market_state(
                 symbol=instrument.symbol,
                 fundamental_value_ticks=instrument.starting_price_ticks,
             )
+        )
+
+    for position in positions:
+        instrument = instruments_by_symbol[position.symbol]
+        exchange.allocate_initial_position(
+            participant_id=position.participant_id,
+            symbol=position.symbol,
+            quantity=position.quantity,
+            price_ticks=instrument.starting_price_ticks,
         )
 
     return tuple(market_states)

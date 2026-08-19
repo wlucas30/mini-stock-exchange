@@ -250,9 +250,10 @@ Adds a new tradable instrument to the exchange and issues its initial volume.
 The supplied symbol must be a valid identifier and must not already
 belong to another instrument. The price and volume must be positive integers.
 
-The issued volume is credited to the \texttt{EXCHANGE\_MASTER} participant and
-immediately placed for sale as a limit order at the supplied price. This gives
-the new instrument an initial ask from which other participants can buy.
+The issued volume is divided as evenly as possible between the simulation's
+configured initial position holders. In the default configuration these are
+the market-maker and long-term-holder participants. The supplied price is
+recorded as their acquisition cost. No orders are submitted automatically.
 
 The supplied price also becomes the instrument's initial hidden fundamental
 value. Its initial sentiment is neutral and its initial volatility is 0.1 per
@@ -265,8 +266,8 @@ through the exchange's public order book.
 ADD INSTR AAPL PRICE 10000 VOLUME 100
 \end{lstlisting}
 
-After this command succeeds, 100 units of \texttt{AAPL} are offered for sale
-at 10000 ticks.
+After this command succeeds, 100 units of \texttt{AAPL} are allocated across
+the configured initial position holders at an acquisition cost of 10000 ticks.
 
 \subsubsection*{Possible errors}
 
@@ -323,8 +324,9 @@ LIST INSTR
 
 \subsubsection*{Description}
 
-Displays the symbols of all instruments currently registered with the
-exchange. Instruments are displayed in registration order.
+Displays the symbol and total issued supply of every instrument currently
+registered with the exchange. Instruments are displayed in registration
+order.
 
 If no instruments exist, the command displays an empty list rather than
 returning an error.
@@ -428,6 +430,10 @@ quantity rests on the order book.
 
 Resting orders are prioritised first by price and then by submission
 time.
+
+Orders submitted through the command interface do not have an automatic
+expiry and remain active until filled or cancelled. Automated strategies may
+set an expiry timestamp directly on their order requests.
 
 \subsubsection*{Examples}
 
@@ -668,7 +674,10 @@ SHOW GRAPH <symbol>
 
 \subsubsection*{Description}
 
-Displays a graph of trading activity for the specified instrument.
+Displays the instrument's traded-price and order-book midpoint histories
+alongside its exact hidden fundamental-value history. The three series are
+shown as separately labelled lines against simulation time. A midpoint is
+recorded only while both sides of the order book are available.
 
 \subsubsection*{Example}
 

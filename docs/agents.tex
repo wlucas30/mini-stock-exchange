@@ -43,12 +43,11 @@ exchange. Consequently, the traded price may be above or below fundamental
 value, and it may take time for market activity to move the two closer
 together.
 
-When an instrument is first issued, its initial fundamental value is the
-configured starting price. The startup configuration distributes issued volume
-across smaller sell orders around that price. The instrument begins in a neutral sentiment
-regime. Its initial volatility is 0.1 per cent. These defaults provide a
-complete hidden state without requiring additional instrument-creation
-parameters.
+When an instrument is first created, its initial fundamental value is the
+configured starting price. Its complete initial supply is allocated directly
+to configured participants at that acquisition cost. No startup orders are
+created automatically. The instrument begins in a neutral sentiment regime.
+Its initial volatility is 0.1\%.
 
 \subsection{Sentiment}
 
@@ -87,7 +86,8 @@ mean that a bullish instrument may fall on a particular step and a bearish
 instrument may temporarily rise.
 
 Volatility is represented as a proportion of fundamental value rather than a
-fixed number of ticks. It fluctuates gradually on every simulation step within
+fixed number of ticks. It receives a small random shock on every simulation
+step, but is pulled gradually back towards its normal level and remains within
 bounded limits. Fundamental value then receives a random percentage movement,
 with bullish or bearish sentiment biasing the likely direction. Fundamental
 value is always kept at or above one tick.
@@ -140,8 +140,14 @@ informed participants.
 Their decisions may consider the public order book, recent trades, current
 inventory, available cash, and an imperfect estimate of fundamental value.
 They should adjust their quotes or reduce activity when inventory becomes too
-one-sided.
+one-sided. Hard inventory bounds also limit quoted quantities so a fully filled
+bid or ask cannot move the maker outside its permitted inventory range.
 
+\subsection{Long-term holders}
+
+Long-term holders represent investors who own shares without providing regular
+order flow. They retain their configured positions and do not submit or cancel
+orders.
 \section{Information Access}
 
 Hidden market state should not be exposed equally to all agents. Public market
@@ -184,6 +190,10 @@ signal without revealing the name or exact state of the regime.
 Agents convert their observations and strategies into order requests. Those
 orders interact through the normal exchange matching rules. The resulting
 trade prices form the public price history of each instrument.
+
+Automated strategies may assign an optional expiry timestamp to a limit order.
+The exchange cancels due orders as simulation time advances and releases any
+remaining reserved cash or positions.
 
 This separation is important:
 

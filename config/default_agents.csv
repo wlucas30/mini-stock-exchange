@@ -1,11 +1,15 @@
 participant_id,display_name,balance,strategy
-NOISE_1,Noise Trader 1,1000000,RandomNoise
-NOISE_2,Noise Trader 2,1000000,RandomNoise
-NOISE_3,Noise Trader 3,1000000,RandomNoise
-NOISE_4,Noise Trader 4,1000000,RandomNoise
-NOISE_5,Noise Trader 5,1000000,RandomNoise
-NOISE_6,Noise Trader 6,1000000,RandomNoise
-NOISE_7,Noise Trader 7,1000000,RandomNoise
-NOISE_8,Noise Trader 8,1000000,RandomNoise
+NOISE_1,Noise Trader 1,300000,RandomNoise
+NOISE_2,Noise Trader 2,300000,RandomNoise
+NOISE_3,Noise Trader 3,300000,RandomNoise
+NOISE_4,Noise Trader 4,300000,RandomNoise
+NOISE_5,Noise Trader 5,300000,RandomNoise
+NOISE_6,Noise Trader 6,300000,RandomNoise
+NOISE_7,Noise Trader 7,300000,RandomNoise
+NOISE_8,Noise Trader 8,300000,RandomNoise
 FUNDAMENTAL_1,Fundamental Trader 1,2000000,Fundamental
 FUNDAMENTAL_2,Fundamental Trader 2,2000000,Fundamental
+MARKET_MAKER_1,Market Maker 1,2000000,MarketMaker
+MARKET_MAKER_2,Market Maker 2,2000000,MarketMaker
+LONG_TERM_HOLDER_1,Long-Term Holder 1,100000,LongTermHolder
+LONG_TERM_HOLDER_2,Long-Term Holder 2,100000,LongTermHolder

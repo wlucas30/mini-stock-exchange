@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 
-from mini_stock_exchange.configuration import EXCHANGE_MASTER_ID
 from mini_stock_exchange.exchange.exchange import Exchange
 from mini_stock_exchange.exchange.models import (
     Instrument,
@@ -10,7 +9,6 @@ from mini_stock_exchange.exchange.models import (
     ParticipantDetails,
     ParticipantSummary,
     PriceTicks,
-    Quantity,
     RequestForOrder,
     Symbol,
     Timestamp,
@@ -65,8 +63,6 @@ class ErrorResponse:
 class AddInstrumentResponse:
     instrument: Instrument
     price_ticks: PriceTicks
-    volume: Quantity
-    initial_order_id: OrderId
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -76,7 +72,7 @@ class AddParticipantResponse:
 
 @dataclass(frozen=True, kw_only=True)
 class ListInstrumentsResponse:
-    symbols: tuple[Symbol, ...]
+    instruments: tuple[Instrument, ...]
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -123,6 +119,8 @@ class ShowTradesResponse:
 class ShowGraphResponse:
     symbol: Symbol
     entries: tuple[GraphEntry, ...]
+    fundamental_entries: tuple[GraphEntry, ...] = ()
+    midpoint_entries: tuple[GraphEntry, ...] = ()
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -152,23 +150,19 @@ class Executor:
                 price_ticks=price_ticks,
                 volume=volume,
             ):
-                instrument = Instrument(symbol=symbol)
+                instrument = Instrument(symbol=symbol, total_supply=volume)
 
                 try:
                     if self._simulation is None:
                         return ErrorResponse(message="Simulation is unavailable")
 
-                    order = self._simulation.issue_instrument(
+                    self._simulation.issue_instrument(
                         instrument=instrument,
-                        issuer_id=EXCHANGE_MASTER_ID,
                         price_ticks=price_ticks,
-                        volume=volume,
                     )
                     return AddInstrumentResponse(
                         instrument=instrument,
                         price_ticks=price_ticks,
-                        volume=volume,
-                        initial_order_id=order.order_id,
                     )
                 except ValueError as error:
                     return ErrorResponse(message=f"Failed to add instrument: {error}")
@@ -187,7 +181,7 @@ class Executor:
 
             case ListInstruments():
                 return ListInstrumentsResponse(
-                    symbols=self._exchange.get_instrument_symbols()
+                    instruments=self._exchange.get_instruments()
                 )
 
             case ListParticipants():
@@ -273,4 +267,34 @@ class Executor:
                     for trade in trades
                 )
 
-                return ShowGraphResponse(symbol=symbol, entries=entries)
+                fundamental_entries = (
+                    tuple(
+                        GraphEntry(
+                            timestamp=entry.timestamp,
+                            price_ticks=entry.price_ticks,
+                        )
+                        for entry in self._simulation.get_fundamental_value_history(
+                            symbol
+                        )
+                    )
+                    if self._simulation is not None
+                    else ()
+                )
+                midpoint_entries = (
+                    tuple(
+                        GraphEntry(
+                            timestamp=entry.timestamp,
+                            price_ticks=entry.price_ticks,
+                        )
+                        for entry in self._simulation.get_midpoint_history(symbol)
+                    )
+                    if self._simulation is not None
+                    else ()
+                )
+
+                return ShowGraphResponse(
+                    symbol=symbol,
+                    entries=entries,
+                    fundamental_entries=fundamental_entries,
+                    midpoint_entries=midpoint_entries,
+                )
