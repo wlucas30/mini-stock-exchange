@@ -4,7 +4,7 @@ from pathlib import Path
 
 from matplotlib import pyplot as plt
 
-from mini_stock_exchange.agents import MarketMakerAgent
+from mini_stock_exchange.agents import LongTermHolderAgent, MarketMakerAgent
 from mini_stock_exchange.configuration import seed_agents, seed_exchange
 from mini_stock_exchange.exchange.exchange import Exchange
 from mini_stock_exchange.exchange.models import Symbol
@@ -55,11 +55,11 @@ def main() -> None:
         exchange,
         simulation_time,
         agents=agents,
-        market_states=market_states,
+        market_states=market_states_by_symbol,
         initial_position_holder_ids=(
             agent.participant_id
             for agent in agents
-            if isinstance(agent, MarketMakerAgent)
+            if isinstance(agent, (LongTermHolderAgent, MarketMakerAgent))
         ),
     )
     controller = Controller(simulation)

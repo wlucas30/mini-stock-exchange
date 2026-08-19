@@ -161,23 +161,22 @@ class Simulation:
         exchange: Exchange,
         simulation_time: SimulationTime,
         agents: Iterable[SimulationAgent] = (),
-        market_states: Iterable[MarketState] = (),
+        market_states: dict[Symbol, MarketState] | None = None,
         initial_position_holder_ids: Iterable[ParticipantId] = (),
     ) -> None:
         self._exchange = exchange
         self._time = simulation_time
         self._agents = list(agents)
         self._initial_position_holder_ids = tuple(initial_position_holder_ids)
-        self._market_states: dict[Symbol, MarketState] = {}
+        self._market_states = market_states if market_states is not None else {}
 
-        for market_state in market_states:
-            if market_state.symbol in self._market_states:
-                raise ValueError(f"Duplicate market state for {market_state.symbol}")
+        for symbol, market_state in self._market_states.items():
+            if symbol != market_state.symbol:
+                raise ValueError(f"Market state key does not match symbol: {symbol}")
             if market_state.symbol not in exchange.get_instrument_symbols():
                 raise ValueError(
                     f"Market state symbol {market_state.symbol} does not exist"
                 )
-            self._market_states[market_state.symbol] = market_state
 
         missing_states = (
             set(exchange.get_instrument_symbols()) - self._market_states.keys()

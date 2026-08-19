@@ -5,6 +5,7 @@ from pathlib import Path
 
 from mini_stock_exchange.agents import (
     FundamentalTrader,
+    LongTermHolderAgent,
     MarketMakerAgent,
     RandomNoiseTrader,
 )
@@ -80,12 +81,20 @@ def _make_market_maker(
     )
 
 
+def _make_long_term_holder(
+    participant_id: ParticipantId,
+    fundamental_value_estimator: FundamentalValueEstimator,
+) -> SimulationAgent:
+    return LongTermHolderAgent(participant_id=participant_id)
+
+
 AGENT_FACTORIES: dict[
     str, Callable[[ParticipantId, FundamentalValueEstimator], SimulationAgent]
 ] = {
     "RandomNoise": _make_random_noise_trader,
     "Fundamental": _make_fundamental_trader,
     "MarketMaker": _make_market_maker,
+    "LongTermHolder": _make_long_term_holder,
 }
 
 

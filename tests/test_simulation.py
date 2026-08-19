@@ -67,14 +67,14 @@ def test_step_expires_due_limit_order_and_releases_reserved_cash() -> None:
     simulation = Simulation(
         exchange,
         simulation_time,
-        market_states=(
-            MarketState(
+        market_states={
+            "AAPL": MarketState(
                 symbol="AAPL",
                 fundamental_value_ticks=100,
                 sentiment=Sentiment.NEUTRAL,
                 volatility=0.001,
-            ),
-        ),
+            )
+        },
     )
     order = exchange.place_order(
         RequestForOrder(
@@ -140,9 +140,11 @@ def test_issue_instrument_creates_hidden_market_state() -> None:
         Participant("MARKET_MAKER", "Market Maker", balance=0)
     )
 
+    market_states: dict[str, MarketState] = {}
     simulation = Simulation(
         simulation.exchange,
         SimulationTime(),
+        market_states=market_states,
         initial_position_holder_ids=("MARKET_MAKER",),
     )
 
@@ -152,7 +154,7 @@ def test_issue_instrument_creates_hidden_market_state() -> None:
         volume=100,
     )
 
-    assert simulation._market_states == {
+    assert market_states == {
         "AAPL": MarketState(
             symbol="AAPL",
             fundamental_value_ticks=10_000,
