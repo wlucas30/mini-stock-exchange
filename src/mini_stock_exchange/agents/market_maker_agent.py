@@ -13,6 +13,8 @@ from mini_stock_exchange.simulation import FundamentalValueEstimator
 HALF_SPREAD_FRACTION = 0.02
 QUOTE_QUANTITY = 10
 QUOTE_LIFETIME = 100
+TARGET_INVENTORY_FRACTION = 0.05
+MAX_INVENTORY_SKEW = 0.02
 
 
 @dataclass(kw_only=True)
@@ -34,15 +36,36 @@ class MarketMakerAgent:
 
         expires_at = timestamp + QUOTE_LIFETIME
 
-        for symbol in symbols:
+        for instrument in exchange.get_instruments():
+            symbol = instrument.symbol
             value_estimate = self.fundamental_value_estimator(symbol)
-            bid_price = max(1, round(value_estimate * (1 - HALF_SPREAD_FRACTION)))
-            ask_price = max(
-                bid_price + 1,
-                round(value_estimate * (1 + HALF_SPREAD_FRACTION)),
-            )
 
             participant = exchange.get_participant_details(self.participant_id)
+            position = next(
+                (
+                    position
+                    for position in participant.positions
+                    if position.symbol == symbol
+                ),
+                None,
+            )
+            current_inventory = position.total_quantity if position is not None else 0
+            target_inventory = max(
+                1,
+                round(instrument.total_supply * TARGET_INVENTORY_FRACTION),
+            )
+            inventory_error = (current_inventory - target_inventory) / target_inventory
+            bounded_error = max(-1.0, min(1.0, inventory_error))
+            price_skew = MAX_INVENTORY_SKEW * bounded_error
+
+            adjusted_value = round(value_estimate * (1 - price_skew))
+
+            bid_price = max(1, round(adjusted_value * (1 - HALF_SPREAD_FRACTION)))
+            ask_price = max(
+                bid_price + 1,
+                round(adjusted_value * (1 + HALF_SPREAD_FRACTION)),
+            )
+
             bid_quantity = min(
                 QUOTE_QUANTITY,
                 participant.available_cash // bid_price,
