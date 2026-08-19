@@ -11,10 +11,11 @@ from mini_stock_exchange.exchange.models import (
 from mini_stock_exchange.simulation import FundamentalValueEstimator
 
 HALF_SPREAD_FRACTION = 0.02
-QUOTE_QUANTITY = 10
+BASE_QUOTE_QUANTITY = 10
 QUOTE_LIFETIME = 100
-TARGET_INVENTORY_FRACTION = 0.05
-MAX_INVENTORY_SKEW = 0.02
+TARGET_INVENTORY_FRACTION = 0.0075
+MAX_PRICE_SKEW = 0.02
+MAX_QUANTITY_SKEW = 1.0
 
 
 @dataclass(kw_only=True)
@@ -56,7 +57,7 @@ class MarketMakerAgent:
             )
             inventory_error = (current_inventory - target_inventory) / target_inventory
             bounded_error = max(-1.0, min(1.0, inventory_error))
-            price_skew = MAX_INVENTORY_SKEW * bounded_error
+            price_skew = MAX_PRICE_SKEW * bounded_error
 
             adjusted_value = round(value_estimate * (1 - price_skew))
 
@@ -66,8 +67,22 @@ class MarketMakerAgent:
                 round(adjusted_value * (1 + HALF_SPREAD_FRACTION)),
             )
 
+            base_quantity = min(BASE_QUOTE_QUANTITY, target_inventory)
+
+            bid_quantity_skew = 1 - (MAX_QUANTITY_SKEW * bounded_error)
+            ask_quantity_skew = 1 + (MAX_QUANTITY_SKEW * bounded_error)
+
+            desired_bid_quantity = max(
+                0,
+                round(base_quantity * bid_quantity_skew),
+            )
+            desired_ask_quantity = max(
+                0,
+                round(base_quantity * ask_quantity_skew),
+            )
+
             bid_quantity = min(
-                QUOTE_QUANTITY,
+                desired_bid_quantity,
                 participant.available_cash // bid_price,
             )
             if bid_quantity > 0:
@@ -93,7 +108,7 @@ class MarketMakerAgent:
                 None,
             )
             ask_quantity = min(
-                QUOTE_QUANTITY,
+                desired_ask_quantity,
                 position.available_quantity if position is not None else 0,
             )
             if ask_quantity > 0:
