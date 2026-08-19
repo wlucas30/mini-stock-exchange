@@ -15,7 +15,7 @@ from mini_stock_exchange.exchange.models import (
     Trade,
 )
 from mini_stock_exchange.exchange.order_book import BookSnapshot
-from mini_stock_exchange.simulation import Simulation
+from mini_stock_exchange.simulation import ProgressCallback, Simulation
 from mini_stock_exchange.statistics import (
     InstrumentStatistics,
     calculate_instrument_statistics,
@@ -150,9 +150,11 @@ class Executor:
         self,
         exchange: Exchange,
         simulation: Simulation | None = None,
+        progress_callback: ProgressCallback | None = None,
     ) -> None:
         self._exchange = exchange
         self._simulation = simulation
+        self._progress_callback = progress_callback
 
     def execute(self, command: Command) -> ExecutorResponse:
         match command:
@@ -211,7 +213,10 @@ class Executor:
                 if self._simulation is None:
                     return ErrorResponse(message="Simulation is unavailable")
 
-                timestamp = self._simulation.fast_forward(delta)
+                timestamp = self._simulation.fast_forward(
+                    delta,
+                    progress_callback=self._progress_callback,
+                )
                 return FastForwardResponse(timestamp=timestamp)
 
             case PlaceOrder():

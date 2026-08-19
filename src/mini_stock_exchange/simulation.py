@@ -31,6 +31,7 @@ FUNDAMENTAL_ESTIMATE_ERROR = 0.02
 
 
 type FundamentalValueEstimator = Callable[[Symbol], PriceTicks]
+type ProgressCallback = Callable[[int, int], None]
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -317,11 +318,20 @@ class Simulation:
             self.step()
         return self.current_time
 
-    def fast_forward(self, delta: Timestamp) -> Timestamp:
+    def fast_forward(
+        self,
+        delta: Timestamp,
+        progress_callback: ProgressCallback | None = None,
+    ) -> Timestamp:
         """Run every simulation step in a non-negative delta."""
         if delta < 0:
             raise ValueError("Fast-forward delta cannot be negative")
 
-        for _ in range(delta):
+        progress_interval = max(1, delta // 100)
+        for completed in range(1, delta + 1):
             self.step()
+            if progress_callback is not None and (
+                completed % progress_interval == 0 or completed == delta
+            ):
+                progress_callback(completed, delta)
         return self.current_time

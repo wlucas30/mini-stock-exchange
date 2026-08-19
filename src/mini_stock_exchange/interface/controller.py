@@ -11,7 +11,7 @@ from mini_stock_exchange.commands.execute import (
 from mini_stock_exchange.commands.lexer import LexerError, lex
 from mini_stock_exchange.commands.parser import Parser, ParserError
 from mini_stock_exchange.interface.render import RenderedOutput, Renderer
-from mini_stock_exchange.simulation import Simulation
+from mini_stock_exchange.simulation import ProgressCallback, Simulation
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -35,12 +35,17 @@ class Controller:
         self,
         simulation: Simulation,
         tick_interval_seconds: float = 1.0,
+        progress_callback: ProgressCallback | None = None,
     ) -> None:
         if tick_interval_seconds <= 0:
             raise ValueError("Tick interval must be positive")
 
         self._simulation = simulation
-        self._executor = Executor(simulation.exchange, simulation)
+        self._executor = Executor(
+            simulation.exchange,
+            simulation,
+            progress_callback=progress_callback,
+        )
         self._renderer = Renderer()
         self._tick_interval_seconds = tick_interval_seconds
         self._events: Queue[_Event] = Queue()
