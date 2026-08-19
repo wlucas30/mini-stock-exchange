@@ -1,6 +1,7 @@
+import math
 import random
 from collections.abc import Callable, Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import Protocol
 
@@ -21,13 +22,15 @@ class Sentiment(Enum):
 
 
 SENTIMENT_CHANGE_PROBABILITY = 0.02
-MIN_VOLATILITY = 0.0001
-MAX_VOLATILITY = 0.005
-NORMAL_VOLATILITY = 0.001
+MIN_VOLATILITY = 0.00125
+MAX_VOLATILITY = 0.0225
+NORMAL_VOLATILITY = 0.0075
 VOLATILITY_PERSISTENCE = 0.99
 VOLATILITY_SHOCK_STD_DEV = 0.00005
 SENTIMENT_BIAS_FACTOR = 0.25
 FUNDAMENTAL_ESTIMATE_ERROR = 0.02
+VOLATILITY_PERIOD_STEPS = 1_000
+GROWTH_RATE_PERSISTENCE = 0.99
 
 
 type FundamentalValueEstimator = Callable[[Symbol], PriceTicks]
@@ -50,12 +53,16 @@ class MarketState:
     fundamental_value_ticks: PriceTicks
     sentiment: Sentiment
     volatility: float
+    _fundamental_value: float = field(init=False, repr=False)
+    _growth_rate: float = field(init=False, repr=False, default=0.0)
 
     def __post_init__(self) -> None:
         if self.fundamental_value_ticks <= 0:
             raise ValueError("Fundamental value must be positive")
         if self.volatility < 0:
             raise ValueError("Volatility cannot be negative")
+
+        self._fundamental_value = float(self.fundamental_value_ticks)
 
     def step(self) -> None:
         """Randomly evolve sentiment, volatility, and fundamental value."""
@@ -82,20 +89,32 @@ class MarketState:
             Sentiment.NEUTRAL: 0,
             Sentiment.BULLISH: 1,
         }[self.sentiment]
-        mean_movement = sentiment_direction * self.volatility * SENTIMENT_BIAS_FACTOR
-        percentage_movement = random.gauss(mean_movement, self.volatility)
-        new_value = round(self.fundamental_value_ticks * (1 + percentage_movement))
-        self.fundamental_value_ticks = max(1, new_value)
+        target_growth_rate = (
+            sentiment_direction * self.volatility * SENTIMENT_BIAS_FACTOR
+        )
+        self._growth_rate = target_growth_rate + GROWTH_RATE_PERSISTENCE * (
+            self._growth_rate - target_growth_rate
+        )
+
+        step_growth_rate = self._growth_rate / VOLATILITY_PERIOD_STEPS
+        step_volatility = self.volatility / math.sqrt(VOLATILITY_PERIOD_STEPS)
+        log_value = math.log(self._fundamental_value)
+        log_movement = random.gauss(
+            step_growth_rate,
+            step_volatility,
+        )
+        self._fundamental_value = math.exp(log_value + log_movement)
+        self.fundamental_value_ticks = max(1, round(self._fundamental_value))
 
     @property
     def fundamental_value_estimate(self) -> PriceTicks:
-        std_dev = max(1.0, self.fundamental_value_ticks * FUNDAMENTAL_ESTIMATE_ERROR)
+        std_dev = max(1.0, self._fundamental_value * FUNDAMENTAL_ESTIMATE_ERROR)
 
         return max(
             1,
             round(
                 random.gauss(
-                    self.fundamental_value_ticks,
+                    self._fundamental_value,
                     std_dev,
                 )
             ),
