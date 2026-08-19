@@ -36,6 +36,7 @@ class Exchange:
         self._orders: dict[OrderId, Order] = {}
         self._active_orders: dict[OrderId, Order] = {}
         self._trades: list[Trade] = []
+        self._last_trade_prices: dict[Symbol, PriceTicks] = {}
         self._reserved_cash: dict[OrderId, Cash] = {}
         self._reserved_positions: dict[OrderId, Quantity] = {}
         self._position_cost_basis: dict[tuple[ParticipantId, Symbol], Cash] = {}
@@ -292,6 +293,7 @@ class Exchange:
         )
 
         self._trades.append(trade)
+        self._last_trade_prices[trade.symbol] = trade.price_ticks
 
         if resting.remaining_quantity == 0:
             book = self._order_books[resting.symbol]
@@ -614,9 +616,4 @@ class Exchange:
             # Best ask
             return book.asks[0].price_ticks
 
-        trades: tuple[Trade, ...] = self.get_trades_by_symbol(symbol)
-        if len(trades) > 0:
-            # Last traded price
-            return trades[-1].price_ticks
-
-        return None
+        return self._last_trade_prices.get(symbol)
