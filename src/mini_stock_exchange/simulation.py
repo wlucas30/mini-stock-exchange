@@ -34,8 +34,8 @@ type FundamentalValueEstimator = Callable[[Symbol], PriceTicks]
 
 
 @dataclass(frozen=True, kw_only=True)
-class FundamentalValueEntry:
-    """The exact hidden fundamental value at one simulation timestamp."""
+class PriceHistoryEntry:
+    """A price observed at one simulation timestamp."""
 
     timestamp: Timestamp
     price_ticks: PriceTicks
@@ -186,12 +186,15 @@ class Simulation:
 
         self._fundamental_value_history = {
             symbol: [
-                FundamentalValueEntry(
+                PriceHistoryEntry(
                     timestamp=self._time.current_time,
                     price_ticks=market_state.fundamental_value_ticks,
                 )
             ]
             for symbol, market_state in self._market_states.items()
+        }
+        self._midpoint_history: dict[Symbol, list[PriceHistoryEntry]] = {
+            symbol: [] for symbol in self._market_states
         }
 
     @property
@@ -253,19 +256,31 @@ class Simulation:
             fundamental_value_ticks=price_ticks,
         )
         self._fundamental_value_history[instrument.symbol] = [
-            FundamentalValueEntry(
+            PriceHistoryEntry(
                 timestamp=self._time.current_time,
                 price_ticks=price_ticks,
             )
         ]
+        self._midpoint_history[instrument.symbol] = []
 
     def get_fundamental_value_history(
         self,
         symbol: Symbol,
-    ) -> tuple[FundamentalValueEntry, ...]:
+    ) -> tuple[PriceHistoryEntry, ...]:
         """Return the exact fundamental-value history for one instrument."""
         try:
             history = self._fundamental_value_history[symbol]
+        except KeyError as error:
+            raise ValueError(f"Symbol {symbol} does not exist") from error
+        return tuple(history)
+
+    def get_midpoint_history(
+        self,
+        symbol: Symbol,
+    ) -> tuple[PriceHistoryEntry, ...]:
+        """Return the order-book midpoint history for one instrument."""
+        try:
+            history = self._midpoint_history[symbol]
         except KeyError as error:
             raise ValueError(f"Symbol {symbol} does not exist") from error
         return tuple(history)
@@ -277,13 +292,23 @@ class Simulation:
         for market_state in self._market_states.values():
             market_state.step()
             self._fundamental_value_history[market_state.symbol].append(
-                FundamentalValueEntry(
+                PriceHistoryEntry(
                     timestamp=timestamp,
                     price_ticks=market_state.fundamental_value_ticks,
                 )
             )
         for agent in self._agents:
             agent.act(self._exchange, timestamp)
+        for symbol in self._market_states:
+            book = self._exchange.get_book_snapshot(symbol)
+            if book.bids and book.asks:
+                midpoint = (book.bids[0].price_ticks + book.asks[0].price_ticks) // 2
+                self._midpoint_history[symbol].append(
+                    PriceHistoryEntry(
+                        timestamp=timestamp,
+                        price_ticks=midpoint,
+                    )
+                )
         return timestamp
 
     def advance(self) -> Timestamp:

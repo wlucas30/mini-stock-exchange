@@ -69,6 +69,7 @@ class Renderer:
         symbol: Symbol,
         entries: tuple[GraphEntry, ...],
         fundamental_entries: tuple[GraphEntry, ...],
+        midpoint_entries: tuple[GraphEntry, ...],
     ) -> Figure:
         figure, axes = plt.subplots(figsize=(8, 4.5), layout="constrained")
 
@@ -81,18 +82,31 @@ class Renderer:
             axes.plot(
                 [entry.timestamp for entry in entries],
                 [entry.price_ticks for entry in entries],
-                marker="o",
+                color="#0072B2",
+                linewidth=1,
                 label="Trade price",
+            )
+
+        if midpoint_entries:
+            axes.plot(
+                [entry.timestamp for entry in midpoint_entries],
+                [entry.price_ticks for entry in midpoint_entries],
+                color="#CC79A7",
+                linewidth=1.5,
+                linestyle="--",
+                label="Book midpoint",
             )
 
         if fundamental_entries:
             axes.plot(
                 [entry.timestamp for entry in fundamental_entries],
                 [entry.price_ticks for entry in fundamental_entries],
+                color="#E69F00",
+                linewidth=1.5,
                 label="Fundamental value",
             )
 
-        if entries or fundamental_entries:
+        if entries or midpoint_entries or fundamental_entries:
             axes.legend()
         else:
             axes.text(
@@ -282,8 +296,14 @@ class Renderer:
                 symbol=symbol,
                 entries=entries,
                 fundamental_entries=fundamental_entries,
+                midpoint_entries=midpoint_entries,
             ):
-                graph = self._generate_graph(symbol, entries, fundamental_entries)
+                graph = self._generate_graph(
+                    symbol,
+                    entries,
+                    fundamental_entries,
+                    midpoint_entries,
+                )
                 return FigureOutput(figure=graph)
 
             case ShowTimeResponse(timestamp=timestamp):

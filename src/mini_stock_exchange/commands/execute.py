@@ -120,6 +120,7 @@ class ShowGraphResponse:
     symbol: Symbol
     entries: tuple[GraphEntry, ...]
     fundamental_entries: tuple[GraphEntry, ...] = ()
+    midpoint_entries: tuple[GraphEntry, ...] = ()
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -279,9 +280,21 @@ class Executor:
                     if self._simulation is not None
                     else ()
                 )
+                midpoint_entries = (
+                    tuple(
+                        GraphEntry(
+                            timestamp=entry.timestamp,
+                            price_ticks=entry.price_ticks,
+                        )
+                        for entry in self._simulation.get_midpoint_history(symbol)
+                    )
+                    if self._simulation is not None
+                    else ()
+                )
 
                 return ShowGraphResponse(
                     symbol=symbol,
                     entries=entries,
                     fundamental_entries=fundamental_entries,
+                    midpoint_entries=midpoint_entries,
                 )
