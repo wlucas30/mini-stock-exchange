@@ -286,7 +286,12 @@ def seed_exchange(
 
     market_states: list[MarketState] = []
     for instrument in instruments:
-        exchange.add_instrument(Instrument(symbol=instrument.symbol))
+        exchange.add_instrument(
+            Instrument(
+                symbol=instrument.symbol,
+                total_supply=instrument.initial_quantity,
+            )
+        )
         market_states.append(
             make_initial_market_state(
                 symbol=instrument.symbol,

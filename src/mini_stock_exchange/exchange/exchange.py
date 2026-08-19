@@ -482,6 +482,10 @@ class Exchange:
         """Return the symbols of all registered instruments."""
         return tuple(self._instruments)
 
+    def get_instruments(self) -> tuple[Instrument, ...]:
+        """Return all registered instruments in registration order."""
+        return tuple(self._instruments.values())
+
     def get_participant_summaries(self) -> tuple[ParticipantSummary, ...]:
         """Return summaries of all registered participants."""
         return tuple(

@@ -52,9 +52,8 @@ def test_add_instrument_returns_the_added_instrument() -> None:
     )
 
     assert response == AddInstrumentResponse(
-        instrument=Instrument(symbol="AAPL"),
+        instrument=Instrument(symbol="AAPL", total_supply=100),
         price_ticks=10000,
-        volume=100,
     )
     assert exchange.get_book_snapshot("AAPL").asks == ()
     assert (
@@ -121,12 +120,17 @@ def test_fast_forward_updates_simulation_clock() -> None:
 
 def test_list_instruments_returns_registered_symbols() -> None:
     exchange = Exchange(time=lambda: 100)
-    exchange.add_instrument(Instrument(symbol="AAPL"))
-    exchange.add_instrument(Instrument(symbol="MSFT"))
+    exchange.add_instrument(Instrument(symbol="AAPL", total_supply=100))
+    exchange.add_instrument(Instrument(symbol="MSFT", total_supply=200))
 
     response = Executor(exchange).execute(ListInstruments())
 
-    assert response == ListInstrumentsResponse(symbols=("AAPL", "MSFT"))
+    assert response == ListInstrumentsResponse(
+        instruments=(
+            Instrument(symbol="AAPL", total_supply=100),
+            Instrument(symbol="MSFT", total_supply=200),
+        )
+    )
 
 
 def test_list_participants_returns_registered_ids_and_balances() -> None:
@@ -148,7 +152,7 @@ def test_list_participants_returns_registered_ids_and_balances() -> None:
 
 def test_show_participant_returns_available_and_reserved_assets() -> None:
     exchange = Exchange(time=lambda: 100)
-    exchange.add_instrument(Instrument(symbol="AAPL"))
+    exchange.add_instrument(Instrument(symbol="AAPL", total_supply=100))
     exchange.add_participant(
         Participant("ALICE", "Alice", balance=1_000, positions={"AAPL": 10})
     )
@@ -208,8 +212,8 @@ def test_show_unknown_participant_returns_error() -> None:
 def test_show_graph_returns_trades_for_requested_symbol() -> None:
     timestamp = iter(range(100, 200)).__next__
     exchange = Exchange(time=timestamp)
-    exchange.add_instrument(Instrument(symbol="AAPL"))
-    exchange.add_instrument(Instrument(symbol="MSFT"))
+    exchange.add_instrument(Instrument(symbol="AAPL", total_supply=100))
+    exchange.add_instrument(Instrument(symbol="MSFT", total_supply=100))
     exchange.add_participant(Participant("buyer", "Buyer", balance=10_000))
     exchange.add_participant(
         Participant(
@@ -257,7 +261,7 @@ def test_show_graph_returns_trades_for_requested_symbol() -> None:
 
 def test_show_graph_returns_empty_history_for_instrument_without_trades() -> None:
     exchange = Exchange(time=lambda: 100)
-    exchange.add_instrument(Instrument(symbol="AAPL"))
+    exchange.add_instrument(Instrument(symbol="AAPL", total_supply=100))
 
     response = Executor(exchange).execute(ShowGraph(symbol="AAPL"))
 

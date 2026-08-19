@@ -62,7 +62,7 @@ def test_step_advances_once_and_invokes_agents() -> None:
 def test_step_expires_due_limit_order_and_releases_reserved_cash() -> None:
     simulation_time = SimulationTime(current_time=10)
     exchange = Exchange(time=lambda: simulation_time.current_time)
-    exchange.add_instrument(Instrument(symbol="AAPL"))
+    exchange.add_instrument(Instrument(symbol="AAPL", total_supply=100))
     exchange.add_participant(Participant("BUYER", "Buyer", balance=1_000))
     simulation = Simulation(
         exchange,
@@ -149,9 +149,8 @@ def test_issue_instrument_creates_hidden_market_state() -> None:
     )
 
     simulation.issue_instrument(
-        instrument=Instrument(symbol="AAPL"),
+        instrument=Instrument(symbol="AAPL", total_supply=100),
         price_ticks=10_000,
-        volume=100,
     )
 
     assert market_states == {
@@ -167,7 +166,7 @@ def test_issue_instrument_creates_hidden_market_state() -> None:
 def test_simulation_requires_market_state_for_existing_instrument() -> None:
     simulation_time = SimulationTime()
     exchange = Exchange(time=lambda: simulation_time.current_time)
-    exchange.add_instrument(Instrument(symbol="AAPL"))
+    exchange.add_instrument(Instrument(symbol="AAPL", total_supply=100))
 
     with pytest.raises(ValueError, match="Missing market state for instrument"):
         Simulation(exchange, simulation_time)

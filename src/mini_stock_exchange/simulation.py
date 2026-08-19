@@ -9,7 +9,6 @@ from mini_stock_exchange.exchange.models import (
     Instrument,
     ParticipantId,
     PriceTicks,
-    Quantity,
     Symbol,
     Timestamp,
 )
@@ -215,7 +214,6 @@ class Simulation:
         self,
         instrument: Instrument,
         price_ticks: PriceTicks,
-        volume: Quantity,
     ) -> None:
         """Allocate a new instrument across the initial position holders."""
         if instrument.symbol in self._market_states:
@@ -224,8 +222,6 @@ class Simulation:
             raise ValueError("No participants are configured to receive new supply")
         if price_ticks <= 0:
             raise ValueError("Issue price must be positive")
-        if volume <= 0:
-            raise ValueError("Issue volume must be positive")
 
         participant_ids = {
             participant.participant_id
@@ -238,7 +234,7 @@ class Simulation:
 
         self._exchange.add_instrument(instrument)
         base_quantity, remainder = divmod(
-            volume,
+            instrument.total_supply,
             len(self._initial_position_holder_ids),
         )
         for index, participant_id in enumerate(self._initial_position_holder_ids):

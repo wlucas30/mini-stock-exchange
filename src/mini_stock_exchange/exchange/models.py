@@ -43,10 +43,16 @@ class Instrument:
 
     Attributes:
         symbol (str): A globally unique string identifier such as AAPL.
+        total_supply (Quantity): The total number of issued units.
 
     """
 
     symbol: Symbol
+    total_supply: Quantity
+
+    def __post_init__(self) -> None:
+        if self.total_supply <= 0:
+            raise ValueError("Instrument total supply must be positive")
 
 
 @dataclass

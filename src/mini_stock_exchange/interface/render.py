@@ -114,12 +114,12 @@ class Renderer:
             case AddInstrumentResponse(
                 instrument=instrument,
                 price_ticks=price_ticks,
-                volume=volume,
             ):
                 return TextOutput(
                     text=(
                         f"Successfully added instrument {instrument.symbol} with "
-                        f"{volume} units allocated at {price_ticks} ticks."
+                        f"{instrument.total_supply} units allocated at "
+                        f"{price_ticks} ticks."
                     )
                 )
 
@@ -142,10 +142,13 @@ class Renderer:
             case FastForwardResponse(timestamp=timestamp):
                 return TextOutput(text=f"Current time: {timestamp}")
 
-            case ListInstrumentsResponse(symbols=symbols):
+            case ListInstrumentsResponse(instruments=instruments):
                 table = tabulate(
-                    ((symbol,) for symbol in symbols),
-                    headers=("INSTRUMENT",),
+                    (
+                        (instrument.symbol, instrument.total_supply)
+                        for instrument in instruments
+                    ),
+                    headers=("INSTRUMENT", "TOTAL SUPPLY"),
                     tablefmt="simple",
                 )
                 return TextOutput(text=table)
