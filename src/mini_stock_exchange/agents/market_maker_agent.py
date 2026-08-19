@@ -10,9 +10,9 @@ from mini_stock_exchange.exchange.models import (
 )
 from mini_stock_exchange.simulation import FundamentalValueEstimator
 
-HALF_SPREAD_FRACTION = 0.02
+HALF_SPREAD_FRACTION = 0.005
 BASE_QUOTE_QUANTITY = 10
-QUOTE_LIFETIME = 25
+QUOTE_LIFETIME = 10
 TARGET_INVENTORY_FRACTION = 0.0075
 MIN_INVENTORY_FRACTION = 0.5
 MAX_INVENTORY_FRACTION = 1.5

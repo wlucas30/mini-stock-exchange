@@ -41,17 +41,18 @@ ticks, where one tick is one cent.
 
 `config/default_agents.csv` creates the simulation's automated traders and
 gives each one its configured starting cash balance and strategy. The default
-configuration starts eight `RandomNoise` traders with $10,000 each, two
+configuration starts eight `RandomNoise` traders with $3,000 each, two
 `Fundamental` traders with $20,000 each, and two `MarketMaker` agents with
 $20,000 each. Two passive `LongTermHolder` agents hold most of the issued
 shares and do not submit orders.
 
 `config/default_agent_positions.csv` allocates the complete initial supply of
 each instrument directly to participants. The default configuration divides
-92.5% of each instrument between the two long-term holders. Each market maker
-starts at its 15-unit target, each noise trader receives 10 units, and each
-fundamental trader receives 20 units. The starting price is recorded as every
-holder's acquisition cost.
+76.5% of each instrument between the two long-term holders. Each market maker
+starts at its 15-unit target, each noise trader receives 50 units, and each
+fundamental trader receives 20 units. A noise trader's initial positions are
+worth $3,000 in total, matching its starting cash. The starting price is
+recorded as every holder's acquisition cost.
 
 Simulation time starts at zero and advances once per real second. Use
 `SET TIME MULTIPLIER <n>` to change its speed (`0` pauses it) and
