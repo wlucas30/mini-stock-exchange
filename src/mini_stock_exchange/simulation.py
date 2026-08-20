@@ -28,12 +28,10 @@ NORMAL_VOLATILITY = 0.0075
 VOLATILITY_PERSISTENCE = 0.99
 VOLATILITY_SHOCK_STD_DEV = 0.00005
 SENTIMENT_BIAS_FACTOR = 0.25
-FUNDAMENTAL_ESTIMATE_ERROR = 0.02
 VOLATILITY_PERIOD_STEPS = 1_000
 GROWTH_RATE_PERSISTENCE = 0.99
 
 
-type FundamentalValueEstimator = Callable[[Symbol], PriceTicks]
 type ProgressCallback = Callable[[int, int], None]
 
 
@@ -105,20 +103,6 @@ class MarketState:
         )
         self._fundamental_value = math.exp(log_value + log_movement)
         self.fundamental_value_ticks = max(1, round(self._fundamental_value))
-
-    @property
-    def fundamental_value_estimate(self) -> PriceTicks:
-        std_dev = max(1.0, self._fundamental_value * FUNDAMENTAL_ESTIMATE_ERROR)
-
-        return max(
-            1,
-            round(
-                random.gauss(
-                    self._fundamental_value,
-                    std_dev,
-                )
-            ),
-        )
 
 
 def make_initial_market_state(

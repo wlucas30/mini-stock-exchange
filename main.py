@@ -4,7 +4,11 @@ from pathlib import Path
 
 from matplotlib import pyplot as plt
 
-from mini_stock_exchange.agents import LongTermHolderAgent, MarketMakerAgent
+from mini_stock_exchange.agents import (
+    FundamentalValueEstimator,
+    LongTermHolderAgent,
+    MarketMakerAgent,
+)
 from mini_stock_exchange.configuration import seed_agents, seed_exchange
 from mini_stock_exchange.exchange.exchange import Exchange
 from mini_stock_exchange.exchange.models import Symbol
@@ -52,10 +56,19 @@ def main() -> None:
     simulation_time = SimulationTime()
     exchange = Exchange(time=lambda: simulation_time.current_time)
     market_states_by_symbol: dict[Symbol, MarketState] = {}
+
+    def estimator_factory() -> FundamentalValueEstimator:
+        return FundamentalValueEstimator(
+            fundamental_value_provider=lambda symbol: (
+                market_states_by_symbol[symbol].fundamental_value_ticks
+            ),
+            initial_timestamp=simulation_time.current_time,
+        )
+
     agents = seed_agents(
         exchange,
         DEFAULT_AGENTS,
-        lambda symbol: market_states_by_symbol[symbol].fundamental_value_estimate,
+        estimator_factory,
     )
     market_states = seed_exchange(
         exchange,

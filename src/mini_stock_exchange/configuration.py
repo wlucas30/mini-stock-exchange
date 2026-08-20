@@ -5,6 +5,7 @@ from pathlib import Path
 
 from mini_stock_exchange.agents import (
     FundamentalTrader,
+    FundamentalValueEstimatorFactory,
     LongTermHolderAgent,
     MarketMakerAgent,
     RandomNoiseTrader,
@@ -21,7 +22,6 @@ from mini_stock_exchange.exchange.models import (
     Symbol,
 )
 from mini_stock_exchange.simulation import (
-    FundamentalValueEstimator,
     MarketState,
     SimulationAgent,
     make_initial_market_state,
@@ -56,40 +56,40 @@ class DefaultPosition:
 
 def _make_random_noise_trader(
     participant_id: ParticipantId,
-    fundamental_value_estimator: FundamentalValueEstimator,
+    _estimator_factory: FundamentalValueEstimatorFactory,
 ) -> SimulationAgent:
     return RandomNoiseTrader(participant_id=participant_id)
 
 
 def _make_fundamental_trader(
     participant_id: ParticipantId,
-    fundamental_value_estimator: FundamentalValueEstimator,
+    estimator_factory: FundamentalValueEstimatorFactory,
 ) -> SimulationAgent:
     return FundamentalTrader(
         participant_id=participant_id,
-        fundamental_value_estimator=fundamental_value_estimator,
+        fundamental_value_estimator=estimator_factory(),
     )
 
 
 def _make_market_maker(
     participant_id: ParticipantId,
-    fundamental_value_estimator: FundamentalValueEstimator,
+    estimator_factory: FundamentalValueEstimatorFactory,
 ) -> SimulationAgent:
     return MarketMakerAgent(
         participant_id=participant_id,
-        fundamental_value_estimator=fundamental_value_estimator,
+        fundamental_value_estimator=estimator_factory(),
     )
 
 
 def _make_long_term_holder(
     participant_id: ParticipantId,
-    fundamental_value_estimator: FundamentalValueEstimator,
+    _estimator_factory: FundamentalValueEstimatorFactory,
 ) -> SimulationAgent:
     return LongTermHolderAgent(participant_id=participant_id)
 
 
 AGENT_FACTORIES: dict[
-    str, Callable[[ParticipantId, FundamentalValueEstimator], SimulationAgent]
+    str, Callable[[ParticipantId, FundamentalValueEstimatorFactory], SimulationAgent]
 ] = {
     "RandomNoise": _make_random_noise_trader,
     "Fundamental": _make_fundamental_trader,
@@ -314,7 +314,7 @@ def seed_exchange(
 def seed_agents(
     exchange: Exchange,
     path: Path,
-    fundamental_value_estimator: FundamentalValueEstimator,
+    estimator_factory: FundamentalValueEstimatorFactory,
 ) -> tuple[SimulationAgent, ...]:
     """Create configured participant accounts and automated agents."""
     agents: list[SimulationAgent] = []
@@ -330,7 +330,7 @@ def seed_agents(
         agents.append(
             AGENT_FACTORIES[agent.strategy](
                 agent.participant_id,
-                fundamental_value_estimator,
+                estimator_factory,
             )
         )
 
