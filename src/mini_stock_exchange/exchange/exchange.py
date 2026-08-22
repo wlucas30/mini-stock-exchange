@@ -602,18 +602,20 @@ class Exchange:
         or ask, or the last traded price, in that order of priority. Returns
         None if no price is available."""
 
-        book: BookSnapshot = self.get_book_snapshot(symbol)
+        book = self._order_books.get(symbol)
+        if book is None:
+            raise ValueError(f"{symbol} has no associated order book")
 
-        if len(book.bids) > 0 and len(book.asks) > 0:
-            # Midpoint
-            return (book.bids[0].price_ticks + book.asks[0].price_ticks) // 2
+        best_bid = book.best_bid_price_ticks
+        best_ask = book.best_ask_price_ticks
 
-        if len(book.bids) > 0:
-            # Best bid
-            return book.bids[0].price_ticks
+        if best_bid is not None and best_ask is not None:
+            return (best_bid + best_ask) // 2
 
-        if len(book.asks) > 0:
-            # Best ask
-            return book.asks[0].price_ticks
+        if best_bid is not None:
+            return best_bid
+
+        if best_ask is not None:
+            return best_ask
 
         return self._last_trade_prices.get(symbol)
