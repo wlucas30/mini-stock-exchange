@@ -1,6 +1,9 @@
 import random
 from dataclasses import dataclass
 
+from mini_stock_exchange.agents.fundamental_value_estimator import (
+    FundamentalValueEstimator,
+)
 from mini_stock_exchange.exchange.exchange import Exchange
 from mini_stock_exchange.exchange.models import (
     OrderType,
@@ -14,7 +17,6 @@ from mini_stock_exchange.exchange.models import (
     Symbol,
     Timestamp,
 )
-from mini_stock_exchange.simulation import FundamentalValueEstimator
 
 ACTION_PROBABILITY = 0.2
 MISPRICING_THRESHOLD = 0.02
@@ -45,7 +47,7 @@ class FundamentalTrader:
 
         symbol: Symbol = random.choice(symbols)
 
-        value_estimate: PriceTicks = self.fundamental_value_estimator(symbol)
+        value_estimate = self.fundamental_value_estimator.estimate(symbol, timestamp)
 
         participant: ParticipantDetails = exchange.get_participant_details(
             self.participant_id

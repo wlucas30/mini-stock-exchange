@@ -4,7 +4,11 @@ from pathlib import Path
 
 from matplotlib import pyplot as plt
 
-from mini_stock_exchange.agents import LongTermHolderAgent, MarketMakerAgent
+from mini_stock_exchange.agents import (
+    FundamentalValueEstimator,
+    LongTermHolderAgent,
+    MarketMakerAgent,
+)
 from mini_stock_exchange.configuration import seed_agents, seed_exchange
 from mini_stock_exchange.exchange.exchange import Exchange
 from mini_stock_exchange.exchange.models import Symbol
@@ -19,6 +23,7 @@ DEFAULT_AGENTS = Path(__file__).parent / "config" / "default_agents.csv"
 DEFAULT_AGENT_POSITIONS = (
     Path(__file__).parent / "config" / "default_agent_positions.csv"
 )
+PROGRESS_BAR_WIDTH = 40
 
 
 def display(output: TextOutput | FigureOutput) -> None:
@@ -34,14 +39,36 @@ def display(output: TextOutput | FigureOutput) -> None:
             plt.show(block=False)
 
 
+def display_progress(completed: int, total: int) -> None:
+    """Update the terminal progress bar for a fast-forward command."""
+    fraction = completed / total
+    filled = round(PROGRESS_BAR_WIDTH * fraction)
+    bar = "#" * filled + "-" * (PROGRESS_BAR_WIDTH - filled)
+    ending = "\n" if completed == total else ""
+    print(
+        f"\rFast forwarding [{bar}] {fraction:6.1%} ({completed:,}/{total:,})",
+        end=ending,
+        flush=True,
+    )
+
+
 def main() -> None:
     simulation_time = SimulationTime()
     exchange = Exchange(time=lambda: simulation_time.current_time)
     market_states_by_symbol: dict[Symbol, MarketState] = {}
+
+    def estimator_factory() -> FundamentalValueEstimator:
+        return FundamentalValueEstimator(
+            fundamental_value_provider=lambda symbol: (
+                market_states_by_symbol[symbol].fundamental_value_ticks
+            ),
+            initial_timestamp=simulation_time.current_time,
+        )
+
     agents = seed_agents(
         exchange,
         DEFAULT_AGENTS,
-        lambda symbol: market_states_by_symbol[symbol].fundamental_value_estimate,
+        estimator_factory,
     )
     market_states = seed_exchange(
         exchange,
@@ -62,7 +89,7 @@ def main() -> None:
             if isinstance(agent, (LongTermHolderAgent, MarketMakerAgent))
         ),
     )
-    controller = Controller(simulation)
+    controller = Controller(simulation, progress_callback=display_progress)
 
     print("Mini Stock Exchange")
     print("Enter a command, or press Ctrl-D to exit.")

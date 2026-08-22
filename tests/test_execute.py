@@ -6,6 +6,7 @@ from mini_stock_exchange.commands.command import (
     SetTimeMultiplier,
     ShowGraph,
     ShowParticipant,
+    ShowPerformance,
     ShowTime,
 )
 from mini_stock_exchange.commands.execute import (
@@ -19,6 +20,7 @@ from mini_stock_exchange.commands.execute import (
     SetTimeMultiplierResponse,
     ShowGraphResponse,
     ShowParticipantResponse,
+    ShowPerformanceResponse,
     ShowTimeResponse,
 )
 from mini_stock_exchange.exchange.exchange import Exchange
@@ -32,7 +34,13 @@ from mini_stock_exchange.exchange.models import (
     RequestForOrder,
     Side,
 )
-from mini_stock_exchange.simulation import Simulation, SimulationTime
+from mini_stock_exchange.simulation import (
+    MarketState,
+    ParticipantPerformanceHistory,
+    Sentiment,
+    Simulation,
+    SimulationTime,
+)
 
 
 def test_add_instrument_returns_the_added_instrument() -> None:
@@ -207,6 +215,71 @@ def test_show_unknown_participant_returns_error() -> None:
 
     assert isinstance(response, ErrorResponse)
     assert response.message.startswith("Failed to get participant:")
+
+
+def test_show_performance_returns_total_cash_and_marked_net_worth_history() -> None:
+    simulation_time = SimulationTime()
+    exchange = Exchange(time=lambda: simulation_time.current_time)
+    exchange.add_instrument(Instrument(symbol="AAPL", total_supply=100))
+    exchange.add_participant(Participant("ALICE", "Alice", balance=1_000))
+    exchange.add_participant(Participant("MAKER", "Maker", balance=10_000))
+    exchange.allocate_initial_position("ALICE", "AAPL", 10, 100)
+    exchange.place_order(
+        RequestForOrder(
+            participant_id="MAKER",
+            symbol="AAPL",
+            side=Side.BUY,
+            order_type=OrderType.LIMIT,
+            original_quantity=1,
+            price_ticks=120,
+        )
+    )
+    exchange.place_order(
+        RequestForOrder(
+            participant_id="ALICE",
+            symbol="AAPL",
+            side=Side.BUY,
+            order_type=OrderType.LIMIT,
+            original_quantity=2,
+            price_ticks=100,
+        )
+    )
+    exchange.place_order(
+        RequestForOrder(
+            participant_id="ALICE",
+            symbol="AAPL",
+            side=Side.SELL,
+            order_type=OrderType.LIMIT,
+            original_quantity=4,
+            price_ticks=130,
+        )
+    )
+    simulation = Simulation(
+        exchange,
+        simulation_time,
+        market_states={
+            "AAPL": MarketState(
+                symbol="AAPL",
+                fundamental_value_ticks=100,
+                sentiment=Sentiment.NEUTRAL,
+                volatility=0.001,
+            )
+        },
+    )
+    simulation.step()
+
+    response = Executor(exchange, simulation).execute(
+        ShowPerformance(participant_id="ALICE")
+    )
+
+    assert response == ShowPerformanceResponse(
+        history=ParticipantPerformanceHistory(
+            participant_id="ALICE",
+            start_timestamp=0,
+            cash_balances=(1_000, 1_000),
+            net_worths=(2_250, 2_250),
+        )
+    )
 
 
 def test_show_graph_returns_trades_for_requested_symbol() -> None:

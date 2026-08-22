@@ -1,11 +1,14 @@
+import math
 import random
+from array import array
 from collections.abc import Callable, Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import Protocol
 
 from mini_stock_exchange.exchange.exchange import Exchange
 from mini_stock_exchange.exchange.models import (
+    Cash,
     Instrument,
     ParticipantId,
     PriceTicks,
@@ -21,16 +24,17 @@ class Sentiment(Enum):
 
 
 SENTIMENT_CHANGE_PROBABILITY = 0.02
-MIN_VOLATILITY = 0.0001
-MAX_VOLATILITY = 0.005
-NORMAL_VOLATILITY = 0.001
+MIN_VOLATILITY = 0.00125
+MAX_VOLATILITY = 0.0225
+NORMAL_VOLATILITY = 0.0075
 VOLATILITY_PERSISTENCE = 0.99
 VOLATILITY_SHOCK_STD_DEV = 0.00005
 SENTIMENT_BIAS_FACTOR = 0.25
-FUNDAMENTAL_ESTIMATE_ERROR = 0.02
+VOLATILITY_PERIOD_STEPS = 1_000
+GROWTH_RATE_PERSISTENCE = 0.99
 
 
-type FundamentalValueEstimator = Callable[[Symbol], PriceTicks]
+type ProgressCallback = Callable[[int, int], None]
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -41,6 +45,40 @@ class PriceHistoryEntry:
     price_ticks: PriceTicks
 
 
+@dataclass(frozen=True, kw_only=True)
+class ParticipantPerformanceHistory:
+    """Stored cash and net-worth series for one participant."""
+
+    participant_id: ParticipantId
+    start_timestamp: Timestamp
+    cash_balances: tuple[Cash, ...]
+    net_worths: tuple[Cash, ...]
+
+
+def _empty_cash_array() -> array[int]:
+    return array("q")
+
+
+@dataclass(kw_only=True)
+class _ParticipantPerformanceHistory:
+    start_timestamp: Timestamp
+    cash_balances: array[int] = field(default_factory=_empty_cash_array)
+    net_worths: array[int] = field(default_factory=_empty_cash_array)
+
+    def append(
+        self,
+        timestamp: Timestamp,
+        cash_balance: Cash,
+        net_worth: Cash,
+    ) -> None:
+        expected_timestamp = self.start_timestamp + len(self.cash_balances)
+        if timestamp != expected_timestamp:
+            raise RuntimeError("Participant performance timestamps must be consecutive")
+
+        self.cash_balances.append(cash_balance)
+        self.net_worths.append(net_worth)
+
+
 @dataclass(kw_only=True)
 class MarketState:
     """Hidden simulation state for one instrument."""
@@ -49,12 +87,16 @@ class MarketState:
     fundamental_value_ticks: PriceTicks
     sentiment: Sentiment
     volatility: float
+    _fundamental_value: float = field(init=False, repr=False)
+    _growth_rate: float = field(init=False, repr=False, default=0.0)
 
     def __post_init__(self) -> None:
         if self.fundamental_value_ticks <= 0:
             raise ValueError("Fundamental value must be positive")
         if self.volatility < 0:
             raise ValueError("Volatility cannot be negative")
+
+        self._fundamental_value = float(self.fundamental_value_ticks)
 
     def step(self) -> None:
         """Randomly evolve sentiment, volatility, and fundamental value."""
@@ -81,24 +123,22 @@ class MarketState:
             Sentiment.NEUTRAL: 0,
             Sentiment.BULLISH: 1,
         }[self.sentiment]
-        mean_movement = sentiment_direction * self.volatility * SENTIMENT_BIAS_FACTOR
-        percentage_movement = random.gauss(mean_movement, self.volatility)
-        new_value = round(self.fundamental_value_ticks * (1 + percentage_movement))
-        self.fundamental_value_ticks = max(1, new_value)
-
-    @property
-    def fundamental_value_estimate(self) -> PriceTicks:
-        std_dev = max(1.0, self.fundamental_value_ticks * FUNDAMENTAL_ESTIMATE_ERROR)
-
-        return max(
-            1,
-            round(
-                random.gauss(
-                    self.fundamental_value_ticks,
-                    std_dev,
-                )
-            ),
+        target_growth_rate = (
+            sentiment_direction * self.volatility * SENTIMENT_BIAS_FACTOR
         )
+        self._growth_rate = target_growth_rate + GROWTH_RATE_PERSISTENCE * (
+            self._growth_rate - target_growth_rate
+        )
+
+        step_growth_rate = self._growth_rate / VOLATILITY_PERIOD_STEPS
+        step_volatility = self.volatility / math.sqrt(VOLATILITY_PERIOD_STEPS)
+        log_value = math.log(self._fundamental_value)
+        log_movement = random.gauss(
+            step_growth_rate,
+            step_volatility,
+        )
+        self._fundamental_value = math.exp(log_value + log_movement)
+        self.fundamental_value_ticks = max(1, round(self._fundamental_value))
 
 
 def make_initial_market_state(
@@ -196,6 +236,10 @@ class Simulation:
         self._midpoint_history: dict[Symbol, list[PriceHistoryEntry]] = {
             symbol: [] for symbol in self._market_states
         }
+        self._participant_performance_histories: dict[
+            ParticipantId, _ParticipantPerformanceHistory
+        ] = {}
+        self._record_participant_performance(self._time.current_time)
 
     @property
     def exchange(self) -> Exchange:
@@ -285,6 +329,41 @@ class Simulation:
             raise ValueError(f"Symbol {symbol} does not exist") from error
         return tuple(history)
 
+    def get_participant_performance_history(
+        self,
+        participant_id: ParticipantId,
+    ) -> ParticipantPerformanceHistory:
+        """Return stored cash and net-worth history for one participant."""
+        try:
+            history = self._participant_performance_histories[participant_id]
+        except KeyError as error:
+            raise ValueError(
+                f"Participant {participant_id} has no performance history"
+            ) from error
+
+        return ParticipantPerformanceHistory(
+            participant_id=participant_id,
+            start_timestamp=history.start_timestamp,
+            cash_balances=tuple(history.cash_balances),
+            net_worths=tuple(history.net_worths),
+        )
+
+    def _record_participant_performance(self, timestamp: Timestamp) -> None:
+        for valuation in self._exchange.get_participant_valuations():
+            history = self._participant_performance_histories.get(
+                valuation.participant_id
+            )
+            if history is None:
+                history = _ParticipantPerformanceHistory(start_timestamp=timestamp)
+                self._participant_performance_histories[valuation.participant_id] = (
+                    history
+                )
+            history.append(
+                timestamp=timestamp,
+                cash_balance=valuation.cash_balance,
+                net_worth=valuation.net_worth,
+            )
+
     def step(self) -> Timestamp:
         """Advance one unit and give every agent one opportunity to act."""
         timestamp = self._time.step()
@@ -309,6 +388,7 @@ class Simulation:
                         price_ticks=midpoint,
                     )
                 )
+        self._record_participant_performance(timestamp)
         return timestamp
 
     def advance(self) -> Timestamp:
@@ -317,11 +397,20 @@ class Simulation:
             self.step()
         return self.current_time
 
-    def fast_forward(self, delta: Timestamp) -> Timestamp:
+    def fast_forward(
+        self,
+        delta: Timestamp,
+        progress_callback: ProgressCallback | None = None,
+    ) -> Timestamp:
         """Run every simulation step in a non-negative delta."""
         if delta < 0:
             raise ValueError("Fast-forward delta cannot be negative")
 
-        for _ in range(delta):
+        progress_interval = max(1, delta // 100)
+        for completed in range(1, delta + 1):
             self.step()
+            if progress_callback is not None and (
+                completed % progress_interval == 0 or completed == delta
+            ):
+                progress_callback(completed, delta)
         return self.current_time

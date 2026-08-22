@@ -15,6 +15,8 @@ from .command import (
     ShowBook,
     ShowGraph,
     ShowParticipant,
+    ShowPerformance,
+    ShowStats,
     ShowTime,
     ShowTrades,
 )
@@ -218,6 +220,12 @@ class Parser:
                         self._expect(TokenType.END)
                         return ShowParticipant(participant_id=ident.lexeme)
 
+                    case TokenType.PERFORMANCE:
+                        self._advance()
+                        ident = self._expect(TokenType.IDENTIFIER)
+                        self._expect(TokenType.END)
+                        return ShowPerformance(participant_id=ident.lexeme)
+
                     case TokenType.TRADES:
                         self._advance()
                         self._expect(TokenType.END)
@@ -233,6 +241,12 @@ class Parser:
                         ident = self._expect(TokenType.IDENTIFIER)
                         self._expect(TokenType.END)
                         return ShowGraph(symbol=ident.lexeme)
+
+                    case TokenType.STATS:
+                        self._advance()
+                        ident = self._expect(TokenType.IDENTIFIER)
+                        self._expect(TokenType.END)
+                        return ShowStats(symbol=ident.lexeme)
 
                     case _:
                         raise ParserError(

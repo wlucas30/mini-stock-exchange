@@ -1,5 +1,8 @@
 from dataclasses import dataclass, field
 
+from mini_stock_exchange.agents.fundamental_value_estimator import (
+    FundamentalValueEstimator,
+)
 from mini_stock_exchange.exchange.exchange import Exchange
 from mini_stock_exchange.exchange.models import (
     OrderType,
@@ -8,7 +11,6 @@ from mini_stock_exchange.exchange.models import (
     Side,
     Timestamp,
 )
-from mini_stock_exchange.simulation import FundamentalValueEstimator
 
 HALF_SPREAD_FRACTION = 0.005
 BASE_QUOTE_QUANTITY = 10
@@ -41,7 +43,10 @@ class MarketMakerAgent:
 
         for instrument in exchange.get_instruments():
             symbol = instrument.symbol
-            value_estimate = self.fundamental_value_estimator(symbol)
+            value_estimate = self.fundamental_value_estimator.estimate(
+                symbol,
+                timestamp,
+            )
 
             participant = exchange.get_participant_details(self.participant_id)
             position = next(

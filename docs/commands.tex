@@ -47,6 +47,7 @@ This allows the user to intervene and act as any participant. The user can:
     \item submit buy and sell orders on behalf of participants;
     \item cancel existing orders on behalf of their owning participants;
     \item inspect a participant's available and reserved assets;
+    \item graph a participant's cash balance and net worth over time;
     \item inspect an instrument's order book;
     \item inspect the exchange's completed trades;
     \item inspect the current simulation time;
@@ -178,9 +179,11 @@ cancel-order-command =
 show-command =
       "SHOW", "BOOK", symbol
     | "SHOW", "PARTICIPANT", participant-id
+    | "SHOW", "PERFORMANCE", participant-id
     | "SHOW", "TRADES"
     | "SHOW", "TIME"
     | "SHOW", "GRAPH", symbol
+    | "SHOW", "STATS", symbol
     ;
 
 participant-id =
@@ -565,6 +568,33 @@ SHOW PARTICIPANT ALICE
 
 The command fails if the specified participant does not exist.
 
+\subsection{\texttt{SHOW PERFORMANCE}}
+
+\subsubsection*{Syntax}
+
+\begin{lstlisting}
+SHOW PERFORMANCE <participant_id>
+\end{lstlisting}
+
+\subsubsection*{Description}
+
+Displays the participant's total cash balance and calculated net worth as two
+lines against simulation time. The simulation records both values at time zero
+and after every subsequent simulation step. Total cash includes funds reserved
+for active buy orders. Net worth adds positions marked at the exchange's public
+reference prices, using acquisition cost when no market reference is available.
+
+\subsubsection*{Example}
+
+\begin{lstlisting}
+SHOW PERFORMANCE ALICE
+\end{lstlisting}
+
+\subsubsection*{Possible errors}
+
+The command fails if the simulation is unavailable or no performance history
+exists for the specified participant.
+
 \subsection{\texttt{SHOW TRADES}}
 
 \subsubsection*{Syntax}
@@ -656,13 +686,38 @@ FAST FORWARD <delta>
 Immediately increases the current simulation time by the supplied
 non-negative delta. The current multiplier is not applied to this operation.
 Every intermediate simulation step is processed, allowing agents to act once
-per step.
+per step. While the command is running, the terminal displays an in-place
+progress bar with the completed and total step counts.
 
 \subsubsection*{Example}
 
 \begin{lstlisting}
 FAST FORWARD 30
 \end{lstlisting}
+
+\subsection{\texttt{SHOW STATS}}
+
+\subsubsection*{Syntax}
+
+\begin{lstlisting}
+SHOW STATS <symbol>
+\end{lstlisting}
+
+\subsubsection*{Description}
+
+Displays observed market statistics for the specified instrument over the
+last 1,000 simulation steps. Statistics include the latest trade and midpoint,
+the current bid-ask spread, trade count, traded volume, volume-weighted average
+price, and realised midpoint volatility. Volatility is the sample standard
+deviation of consecutive midpoint log returns and is not annualised.
+
+\subsubsection*{Example}
+
+\begin{lstlisting}
+SHOW STATS AAPL
+\end{lstlisting}
+
+The command fails if the specified instrument does not exist.
 
 \subsection{\texttt{SHOW GRAPH}}
 

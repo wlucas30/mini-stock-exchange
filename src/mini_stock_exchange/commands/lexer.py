@@ -18,11 +18,13 @@ class TokenType(Enum):
     MULTIPLIER = auto()
     ORDER = auto()
     PARTICIPANT = auto()
+    PERFORMANCE = auto()
     PRICE = auto()
     QUANTITY = auto()
     SELL = auto()
     SET = auto()
     SHOW = auto()
+    STATS = auto()
     TIME = auto()
     TRADES = auto()
     VOLUME = auto()
@@ -48,11 +50,13 @@ KEYWORDS: dict[str, TokenType] = {
     "MULTIPLIER": TokenType.MULTIPLIER,
     "ORDER": TokenType.ORDER,
     "PARTICIPANT": TokenType.PARTICIPANT,
+    "PERFORMANCE": TokenType.PERFORMANCE,
     "PRICE": TokenType.PRICE,
     "QUANTITY": TokenType.QUANTITY,
     "SELL": TokenType.SELL,
     "SET": TokenType.SET,
     "SHOW": TokenType.SHOW,
+    "STATS": TokenType.STATS,
     "TIME": TokenType.TIME,
     "TRADES": TokenType.TRADES,
     "VOLUME": TokenType.VOLUME,

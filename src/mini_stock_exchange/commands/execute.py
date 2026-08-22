@@ -15,7 +15,15 @@ from mini_stock_exchange.exchange.models import (
     Trade,
 )
 from mini_stock_exchange.exchange.order_book import BookSnapshot
-from mini_stock_exchange.simulation import Simulation
+from mini_stock_exchange.simulation import (
+    ParticipantPerformanceHistory,
+    ProgressCallback,
+    Simulation,
+)
+from mini_stock_exchange.statistics import (
+    InstrumentStatistics,
+    calculate_instrument_statistics,
+)
 
 from .command import (
     AddInstrument,
@@ -30,6 +38,8 @@ from .command import (
     ShowBook,
     ShowGraph,
     ShowParticipant,
+    ShowPerformance,
+    ShowStats,
     ShowTime,
     ShowTrades,
 )
@@ -47,7 +57,9 @@ type ExecutorResponse = (
     | ShowTradesResponse
     | ShowTimeResponse
     | ShowGraphResponse
+    | ShowStatsResponse
     | ShowParticipantResponse
+    | ShowPerformanceResponse
     | SetTimeMultiplierResponse
 )
 
@@ -124,8 +136,18 @@ class ShowGraphResponse:
 
 
 @dataclass(frozen=True, kw_only=True)
+class ShowStatsResponse:
+    statistics: InstrumentStatistics
+
+
+@dataclass(frozen=True, kw_only=True)
 class ShowParticipantResponse:
     participant: ParticipantDetails
+
+
+@dataclass(frozen=True, kw_only=True)
+class ShowPerformanceResponse:
+    history: ParticipantPerformanceHistory
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -139,9 +161,11 @@ class Executor:
         self,
         exchange: Exchange,
         simulation: Simulation | None = None,
+        progress_callback: ProgressCallback | None = None,
     ) -> None:
         self._exchange = exchange
         self._simulation = simulation
+        self._progress_callback = progress_callback
 
     def execute(self, command: Command) -> ExecutorResponse:
         match command:
@@ -200,7 +224,10 @@ class Executor:
                 if self._simulation is None:
                     return ErrorResponse(message="Simulation is unavailable")
 
-                timestamp = self._simulation.fast_forward(delta)
+                timestamp = self._simulation.fast_forward(
+                    delta,
+                    progress_callback=self._progress_callback,
+                )
                 return FastForwardResponse(timestamp=timestamp)
 
             case PlaceOrder():
@@ -240,6 +267,20 @@ class Executor:
                     return ShowParticipantResponse(participant=participant)
                 except ValueError as error:
                     return ErrorResponse(message=f"Failed to get participant: {error}")
+
+            case ShowPerformance(participant_id=participant_id):
+                if self._simulation is None:
+                    return ErrorResponse(message="Simulation is unavailable")
+
+                try:
+                    history = self._simulation.get_participant_performance_history(
+                        participant_id
+                    )
+                except ValueError as error:
+                    return ErrorResponse(
+                        message=f"Failed to get participant performance: {error}"
+                    )
+                return ShowPerformanceResponse(history=history)
 
             case ShowTrades():
                 try:
@@ -298,3 +339,22 @@ class Executor:
                     fundamental_entries=fundamental_entries,
                     midpoint_entries=midpoint_entries,
                 )
+
+            case ShowStats(symbol=symbol):
+                if self._simulation is None:
+                    return ErrorResponse(message="Simulation is unavailable")
+
+                try:
+                    statistics = calculate_instrument_statistics(
+                        symbol=symbol,
+                        current_time=self._simulation.current_time,
+                        trades=self._exchange.get_trades_by_symbol(symbol),
+                        book=self._exchange.get_book_snapshot(symbol),
+                        midpoint_history=self._simulation.get_midpoint_history(symbol),
+                    )
+                except ValueError as error:
+                    return ErrorResponse(
+                        message=f"Failed to calculate statistics: {error}"
+                    )
+
+                return ShowStatsResponse(statistics=statistics)

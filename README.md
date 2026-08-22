@@ -43,23 +43,29 @@ ticks, where one tick is one cent.
 gives each one its configured starting cash balance and strategy. The default
 configuration starts eight `RandomNoise` traders with $3,000 each, two
 `Fundamental` traders with $20,000 each, and two `MarketMaker` agents with
-$20,000 each. Two passive `LongTermHolder` agents hold most of the issued
-shares and do not submit orders.
+$20,000 each. Two `Momentum` traders start with $3,000 each. 
+Two passive `LongTermHolder` agents hold most of the issued shares and do not
+submit orders.
 
 `config/default_agent_positions.csv` allocates the complete initial supply of
 each instrument directly to participants. The default configuration divides
-76.5% of each instrument between the two long-term holders. Each market maker
-starts at its 15-unit target, each noise trader receives 50 units, and each
-fundamental trader receives 20 units. A noise trader's initial positions are
-worth $3,000 in total, matching its starting cash. The starting price is
-recorded as every holder's acquisition cost.
+71.5% of each instrument between the two long-term holders. Each market maker
+starts at its 15-unit target, each noise and momentum trader receives 50 units,
+and each fundamental trader receives 20 units. A noise or momentum trader's
+initial positions are worth $3,000 in total, matching its starting cash. The
+starting price is recorded as every holder's acquisition cost.
 
 Simulation time starts at zero and advances once per real second. Use
 `SET TIME MULTIPLIER <n>` to change its speed (`0` pauses it) and
 `FAST FORWARD <delta>` to advance it immediately. Every intermediate
 simulation step is processed so agents can act at each time unit.
+`SHOW PERFORMANCE <participant_id>` graphs the participant's total cash and
+marked net worth, recorded at every simulation step.
 
 Each instrument also has hidden simulation state. Its initial fundamental
 value is its issue price, its initial sentiment is neutral, and its initial
-volatility is 0.1%. Each simulation step may change sentiment, varies
-volatility, and applies a sentiment-biased random movement to fundamental value.
+volatility is 0.1% per 1,000 simulation steps. The fundamental value evolves
+internally as a floating-point value, with random movements and a
+sentiment-driven growth rate that gradually returns towards neutral. The price
+level itself does not mean-revert to its issue price. It is rounded to integer
+ticks when exposed to the rest of the simulation.

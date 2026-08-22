@@ -12,6 +12,7 @@ from .models import (
     ParticipantId,
     ParticipantPositionSummary,
     ParticipantSummary,
+    ParticipantValuation,
     PriceTicks,
     Quantity,
     RequestForOrder,
@@ -36,6 +37,7 @@ class Exchange:
         self._orders: dict[OrderId, Order] = {}
         self._active_orders: dict[OrderId, Order] = {}
         self._trades: list[Trade] = []
+        self._last_trade_prices: dict[Symbol, PriceTicks] = {}
         self._reserved_cash: dict[OrderId, Cash] = {}
         self._reserved_positions: dict[OrderId, Quantity] = {}
         self._position_cost_basis: dict[tuple[ParticipantId, Symbol], Cash] = {}
@@ -292,6 +294,7 @@ class Exchange:
         )
 
         self._trades.append(trade)
+        self._last_trade_prices[trade.symbol] = trade.price_ticks
 
         if resting.remaining_quantity == 0:
             book = self._order_books[resting.symbol]
@@ -499,6 +502,52 @@ class Exchange:
             for participant in self._participants.values()
         )
 
+    def get_participant_valuations(self) -> tuple[ParticipantValuation, ...]:
+        """Calculate total cash and marked net worth for every participant."""
+        cash_balances = {
+            participant_id: participant.balance
+            for participant_id, participant in self._participants.items()
+        }
+        for order_id, amount in self._reserved_cash.items():
+            participant_id = self._orders[order_id].participant_id
+            cash_balances[participant_id] += amount
+
+        positions: dict[tuple[ParticipantId, Symbol], Quantity] = {}
+        for participant_id, participant in self._participants.items():
+            for symbol, quantity in participant.positions.items():
+                positions[(participant_id, symbol)] = quantity
+        for order_id, quantity in self._reserved_positions.items():
+            order = self._orders[order_id]
+            key = (order.participant_id, order.symbol)
+            positions[key] = positions.get(key, 0) + quantity
+
+        mark_prices = {
+            symbol: self.get_reference_price(symbol) for symbol in self._instruments
+        }
+        market_values: dict[ParticipantId, Cash] = dict.fromkeys(
+            self._participants,
+            0,
+        )
+        for key, quantity in positions.items():
+            participant_id, symbol = key
+            mark_price = mark_prices[symbol]
+            if mark_price is None:
+                market_value = self._position_cost_basis.get(key, 0)
+            else:
+                market_value = quantity * mark_price
+            market_values[participant_id] += market_value
+
+        return tuple(
+            ParticipantValuation(
+                participant_id=participant_id,
+                cash_balance=cash_balances[participant_id],
+                net_worth=(
+                    cash_balances[participant_id] + market_values[participant_id]
+                ),
+            )
+            for participant_id in self._participants
+        )
+
     def get_participant_details(
         self,
         participant_id: ParticipantId,
@@ -600,23 +649,20 @@ class Exchange:
         or ask, or the last traded price, in that order of priority. Returns
         None if no price is available."""
 
-        book: BookSnapshot = self.get_book_snapshot(symbol)
+        book = self._order_books.get(symbol)
+        if book is None:
+            raise ValueError(f"{symbol} has no associated order book")
 
-        if len(book.bids) > 0 and len(book.asks) > 0:
-            # Midpoint
-            return (book.bids[0].price_ticks + book.asks[0].price_ticks) // 2
+        best_bid = book.best_bid_price_ticks
+        best_ask = book.best_ask_price_ticks
 
-        if len(book.bids) > 0:
-            # Best bid
-            return book.bids[0].price_ticks
+        if best_bid is not None and best_ask is not None:
+            return (best_bid + best_ask) // 2
 
-        if len(book.asks) > 0:
-            # Best ask
-            return book.asks[0].price_ticks
+        if best_bid is not None:
+            return best_bid
 
-        trades: tuple[Trade, ...] = self.get_trades_by_symbol(symbol)
-        if len(trades) > 0:
-            # Last traded price
-            return trades[-1].price_ticks
+        if best_ask is not None:
+            return best_ask
 
-        return None
+        return self._last_trade_prices.get(symbol)

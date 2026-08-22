@@ -122,16 +122,20 @@ def test_multiplier_can_pause_and_resume_time() -> None:
 
 def test_fast_forward_runs_every_intermediate_step() -> None:
     agent = RecordingAgent()
+    progress: list[tuple[int, int]] = []
     simulation, _ = make_simulation(
         current_time=10,
         multiplier=5,
         agents=(agent,),
     )
 
-    result = simulation.fast_forward(3)
+    result = simulation.fast_forward(
+        3, lambda completed, total: progress.append((completed, total))
+    )
 
     assert result == 13
     assert agent.timestamps == [11, 12, 13]
+    assert progress == [(1, 3), (2, 3), (3, 3)]
 
 
 def test_issue_instrument_creates_hidden_market_state() -> None:

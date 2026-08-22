@@ -24,7 +24,9 @@ type Command = (
     | ShowTrades
     | ShowTime
     | ShowGraph
+    | ShowStats
     | ShowParticipant
+    | ShowPerformance
     | SetTimeMultiplier
 )
 
@@ -88,6 +90,11 @@ class ShowParticipant:
 
 
 @dataclass(frozen=True, kw_only=True)
+class ShowPerformance:
+    participant_id: ParticipantId
+
+
+@dataclass(frozen=True, kw_only=True)
 class ShowTrades:
     pass
 
@@ -99,4 +106,9 @@ class ShowTime:
 
 @dataclass(frozen=True, kw_only=True)
 class ShowGraph:
+    symbol: Symbol
+
+
+@dataclass(frozen=True, kw_only=True)
+class ShowStats:
     symbol: Symbol

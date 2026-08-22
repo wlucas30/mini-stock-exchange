@@ -85,12 +85,19 @@ path. Sentiment supplies directional pressure, but volatility and random shocks
 mean that a bullish instrument may fall on a particular step and a bearish
 instrument may temporarily rise.
 
-Volatility is represented as a proportion of fundamental value rather than a
-fixed number of ticks. It receives a small random shock on every simulation
-step, but is pulled gradually back towards its normal level and remains within
-bounded limits. Fundamental value then receives a random percentage movement,
-with bullish or bearish sentiment biasing the likely direction. Fundamental
-value is always kept at or above one tick.
+Volatility is represented as a proportion of fundamental value over 1,000
+simulation steps rather than as a fixed number of ticks or a per-step rate. For
+example, volatility of 0.001 means approximately 0.1\% volatility over 1,000
+steps. The per-step volatility is obtained by dividing this value by the square
+root of 1,000.
+
+Volatility receives a small random shock on every simulation step, but is pulled
+gradually back towards its normal level and remains within bounded limits.
+Sentiment supplies a target growth rate which adjusts gradually as sentiment
+changes and returns towards neutral when sentiment is neutral. Fundamental
+value is maintained internally with floating-point precision and does not
+mean-revert to its initial price. It is rounded to integer ticks only when
+exposed to the rest of the simulation.
 
 The simulator does not require reproducible random outcomes. Separate runs may
 produce completely different price histories even when they begin with the
@@ -119,16 +126,18 @@ They do not receive the exact hidden fundamental value or sentiment regime.
 Instead, they receive an imperfect estimate or signal. Different traders may
 receive signals of different quality or interpret the same signal differently.
 
-\subsection{Trend followers}
+\subsection{Momentum traders}
 
-Trend followers make decisions from observable market behaviour. They may
-respond to recent trade prices, changes in price, momentum, trading volume, or
-the state of the public order book.
+Momentum traders make decisions from observable market behaviour rather than
+fundamental information. For every instrument, the implemented strategy records
+the public reference price on each simulation step and maintains 20-step and
+100-step rolling averages. Once both windows are full, it compares the short
+average with the long average.
 
-They do not need access to fundamental information. A trend follower may buy
-into an upward movement or sell into a downward movement even where the market
-has already moved away from fundamental value. This can extend trends and
-introduce delayed reactions to changing conditions.
+A momentum trader may buy when the 20-step average is at least 0.5\% above the
+100-step average, or sell when it is at least 0.5\% below. It uses a marketable
+limit order at the current best ask or bid and only trades when its available
+cash or position permits.
 
 \subsection{Market makers}
 
@@ -162,7 +171,7 @@ regime.
 \begin{tabular}{|>{\raggedright\arraybackslash}p{3.6cm}|c|c|c|c|}
 \hline
 \textbf{Information} & \textbf{Noise trader} & \textbf{Fundamental trader}
-& \textbf{Trend follower} & \textbf{Market maker} \\
+& \textbf{Momentum trader} & \textbf{Market maker} \\
 \hline
 Public order book & Optional & Yes & Yes & Yes \\
 \hline

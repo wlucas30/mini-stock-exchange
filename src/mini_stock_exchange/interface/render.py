@@ -23,10 +23,13 @@ from mini_stock_exchange.commands.execute import (
     ShowBookResponse,
     ShowGraphResponse,
     ShowParticipantResponse,
+    ShowPerformanceResponse,
+    ShowStatsResponse,
     ShowTimeResponse,
     ShowTradesResponse,
 )
 from mini_stock_exchange.exchange.models import Cash, Symbol
+from mini_stock_exchange.simulation import ParticipantPerformanceHistory
 
 type RenderedOutput = TextOutput | FigureOutput
 
@@ -118,6 +121,41 @@ class Renderer:
                 transform=axes.transAxes,
             )
 
+        return figure
+
+    @staticmethod
+    def _generate_performance_graph(
+        history: ParticipantPerformanceHistory,
+    ) -> Figure:
+        figure, axes = plt.subplots(figsize=(8, 4.5), layout="constrained")
+
+        timestamps = range(
+            history.start_timestamp,
+            history.start_timestamp + len(history.cash_balances),
+        )
+        axes.plot(
+            timestamps,
+            [balance / 100 for balance in history.cash_balances],
+            color="#0072B2",
+            linewidth=1.25,
+            label="Cash balance",
+        )
+        axes.plot(
+            range(
+                history.start_timestamp,
+                history.start_timestamp + len(history.net_worths),
+            ),
+            [net_worth / 100 for net_worth in history.net_worths],
+            color="#E69F00",
+            linewidth=1.25,
+            label="Net worth",
+        )
+
+        axes.set_title(f"{history.participant_id} performance")
+        axes.set_xlabel("Simulation time")
+        axes.set_ylabel("Value ($)")
+        axes.grid(axis="both", alpha=0.3)
+        axes.legend()
         return figure
 
     def render(self, response: ExecutorResponse) -> RenderedOutput:
@@ -271,6 +309,9 @@ class Renderer:
                     )
                 )
 
+            case ShowPerformanceResponse(history=history):
+                return FigureOutput(figure=self._generate_performance_graph(history))
+
             case ShowTradesResponse(trades=trades):
                 rows = [
                     (
@@ -305,6 +346,56 @@ class Renderer:
                     midpoint_entries,
                 )
                 return FigureOutput(figure=graph)
+
+            case ShowStatsResponse(statistics=statistics):
+                rows = (
+                    (
+                        "Last trade",
+                        statistics.last_trade_price_ticks
+                        if statistics.last_trade_price_ticks is not None
+                        else "N/A",
+                    ),
+                    (
+                        "Book midpoint",
+                        statistics.midpoint_ticks
+                        if statistics.midpoint_ticks is not None
+                        else "N/A",
+                    ),
+                    (
+                        "Bid-ask spread",
+                        statistics.spread_ticks
+                        if statistics.spread_ticks is not None
+                        else "N/A",
+                    ),
+                    (
+                        "Spread",
+                        f"{statistics.spread_percent:.4f}%"
+                        if statistics.spread_percent is not None
+                        else "N/A",
+                    ),
+                    ("Trade count", statistics.trade_count),
+                    ("Traded volume", statistics.traded_volume),
+                    (
+                        "VWAP",
+                        f"{statistics.vwap_ticks:.2f}"
+                        if statistics.vwap_ticks is not None
+                        else "N/A",
+                    ),
+                    (
+                        "Midpoint volatility",
+                        f"{statistics.midpoint_volatility:.4%}"
+                        if statistics.midpoint_volatility is not None
+                        else "N/A",
+                    ),
+                )
+                table = tabulate(rows, headers=("METRIC", "VALUE"), tablefmt="simple")
+                return TextOutput(
+                    text=(
+                        f"STATS {statistics.symbol}\n"
+                        f"WINDOW {statistics.window_start}-{statistics.window_end}\n\n"
+                        f"{table}"
+                    )
+                )
 
             case ShowTimeResponse(timestamp=timestamp):
                 return TextOutput(text=f"Current time: {timestamp}")
