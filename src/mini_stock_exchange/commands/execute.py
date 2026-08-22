@@ -15,7 +15,11 @@ from mini_stock_exchange.exchange.models import (
     Trade,
 )
 from mini_stock_exchange.exchange.order_book import BookSnapshot
-from mini_stock_exchange.simulation import ProgressCallback, Simulation
+from mini_stock_exchange.simulation import (
+    ParticipantPerformanceHistory,
+    ProgressCallback,
+    Simulation,
+)
 from mini_stock_exchange.statistics import (
     InstrumentStatistics,
     calculate_instrument_statistics,
@@ -34,6 +38,7 @@ from .command import (
     ShowBook,
     ShowGraph,
     ShowParticipant,
+    ShowPerformance,
     ShowStats,
     ShowTime,
     ShowTrades,
@@ -54,6 +59,7 @@ type ExecutorResponse = (
     | ShowGraphResponse
     | ShowStatsResponse
     | ShowParticipantResponse
+    | ShowPerformanceResponse
     | SetTimeMultiplierResponse
 )
 
@@ -137,6 +143,11 @@ class ShowStatsResponse:
 @dataclass(frozen=True, kw_only=True)
 class ShowParticipantResponse:
     participant: ParticipantDetails
+
+
+@dataclass(frozen=True, kw_only=True)
+class ShowPerformanceResponse:
+    history: ParticipantPerformanceHistory
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -256,6 +267,20 @@ class Executor:
                     return ShowParticipantResponse(participant=participant)
                 except ValueError as error:
                     return ErrorResponse(message=f"Failed to get participant: {error}")
+
+            case ShowPerformance(participant_id=participant_id):
+                if self._simulation is None:
+                    return ErrorResponse(message="Simulation is unavailable")
+
+                try:
+                    history = self._simulation.get_participant_performance_history(
+                        participant_id
+                    )
+                except ValueError as error:
+                    return ErrorResponse(
+                        message=f"Failed to get participant performance: {error}"
+                    )
+                return ShowPerformanceResponse(history=history)
 
             case ShowTrades():
                 try:

@@ -13,6 +13,7 @@ from mini_stock_exchange.commands.command import (
     ShowBook,
     ShowGraph,
     ShowParticipant,
+    ShowPerformance,
     ShowStats,
     ShowTime,
     ShowTrades,
@@ -91,6 +92,10 @@ def parse(source: str) -> Command:
         (
             "SHOW PARTICIPANT ALICE",
             ShowParticipant(participant_id="ALICE"),
+        ),
+        (
+            "SHOW PERFORMANCE ALICE",
+            ShowPerformance(participant_id="ALICE"),
         ),
         ("SHOW TRADES", ShowTrades()),
         ("SHOW TIME", ShowTime()),

@@ -1,5 +1,6 @@
 import math
 import random
+from array import array
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from enum import Enum, auto
@@ -7,6 +8,7 @@ from typing import Protocol
 
 from mini_stock_exchange.exchange.exchange import Exchange
 from mini_stock_exchange.exchange.models import (
+    Cash,
     Instrument,
     ParticipantId,
     PriceTicks,
@@ -41,6 +43,40 @@ class PriceHistoryEntry:
 
     timestamp: Timestamp
     price_ticks: PriceTicks
+
+
+@dataclass(frozen=True, kw_only=True)
+class ParticipantPerformanceHistory:
+    """Stored cash and net-worth series for one participant."""
+
+    participant_id: ParticipantId
+    start_timestamp: Timestamp
+    cash_balances: tuple[Cash, ...]
+    net_worths: tuple[Cash, ...]
+
+
+def _empty_cash_array() -> array[int]:
+    return array("q")
+
+
+@dataclass(kw_only=True)
+class _ParticipantPerformanceHistory:
+    start_timestamp: Timestamp
+    cash_balances: array[int] = field(default_factory=_empty_cash_array)
+    net_worths: array[int] = field(default_factory=_empty_cash_array)
+
+    def append(
+        self,
+        timestamp: Timestamp,
+        cash_balance: Cash,
+        net_worth: Cash,
+    ) -> None:
+        expected_timestamp = self.start_timestamp + len(self.cash_balances)
+        if timestamp != expected_timestamp:
+            raise RuntimeError("Participant performance timestamps must be consecutive")
+
+        self.cash_balances.append(cash_balance)
+        self.net_worths.append(net_worth)
 
 
 @dataclass(kw_only=True)
@@ -200,6 +236,10 @@ class Simulation:
         self._midpoint_history: dict[Symbol, list[PriceHistoryEntry]] = {
             symbol: [] for symbol in self._market_states
         }
+        self._participant_performance_histories: dict[
+            ParticipantId, _ParticipantPerformanceHistory
+        ] = {}
+        self._record_participant_performance(self._time.current_time)
 
     @property
     def exchange(self) -> Exchange:
@@ -289,6 +329,41 @@ class Simulation:
             raise ValueError(f"Symbol {symbol} does not exist") from error
         return tuple(history)
 
+    def get_participant_performance_history(
+        self,
+        participant_id: ParticipantId,
+    ) -> ParticipantPerformanceHistory:
+        """Return stored cash and net-worth history for one participant."""
+        try:
+            history = self._participant_performance_histories[participant_id]
+        except KeyError as error:
+            raise ValueError(
+                f"Participant {participant_id} has no performance history"
+            ) from error
+
+        return ParticipantPerformanceHistory(
+            participant_id=participant_id,
+            start_timestamp=history.start_timestamp,
+            cash_balances=tuple(history.cash_balances),
+            net_worths=tuple(history.net_worths),
+        )
+
+    def _record_participant_performance(self, timestamp: Timestamp) -> None:
+        for valuation in self._exchange.get_participant_valuations():
+            history = self._participant_performance_histories.get(
+                valuation.participant_id
+            )
+            if history is None:
+                history = _ParticipantPerformanceHistory(start_timestamp=timestamp)
+                self._participant_performance_histories[valuation.participant_id] = (
+                    history
+                )
+            history.append(
+                timestamp=timestamp,
+                cash_balance=valuation.cash_balance,
+                net_worth=valuation.net_worth,
+            )
+
     def step(self) -> Timestamp:
         """Advance one unit and give every agent one opportunity to act."""
         timestamp = self._time.step()
@@ -313,6 +388,7 @@ class Simulation:
                         price_ticks=midpoint,
                     )
                 )
+        self._record_participant_performance(timestamp)
         return timestamp
 
     def advance(self) -> Timestamp:

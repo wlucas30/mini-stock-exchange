@@ -223,6 +223,15 @@ class ParticipantSummary:
 
 
 @dataclass(frozen=True, kw_only=True)
+class ParticipantValuation:
+    """A participant's total cash and marked net worth at one instant."""
+
+    participant_id: ParticipantId
+    cash_balance: Cash
+    net_worth: Cash
+
+
+@dataclass(frozen=True, kw_only=True)
 class ParticipantPositionSummary:
     """Available and reserved quantities for one participant position."""
 

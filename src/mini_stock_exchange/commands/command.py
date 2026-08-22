@@ -26,6 +26,7 @@ type Command = (
     | ShowGraph
     | ShowStats
     | ShowParticipant
+    | ShowPerformance
     | SetTimeMultiplier
 )
 
@@ -85,6 +86,11 @@ class ShowBook:
 
 @dataclass(frozen=True, kw_only=True)
 class ShowParticipant:
+    participant_id: ParticipantId
+
+
+@dataclass(frozen=True, kw_only=True)
+class ShowPerformance:
     participant_id: ParticipantId
 
 
