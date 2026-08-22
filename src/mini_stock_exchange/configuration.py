@@ -8,6 +8,7 @@ from mini_stock_exchange.agents import (
     FundamentalValueEstimatorFactory,
     LongTermHolderAgent,
     MarketMakerAgent,
+    MomentumTrader,
     RandomNoiseTrader,
 )
 from mini_stock_exchange.commands.lexer import KEYWORDS, is_identifier
@@ -88,12 +89,20 @@ def _make_long_term_holder(
     return LongTermHolderAgent(participant_id=participant_id)
 
 
+def _make_momentum_trader(
+    participant_id: ParticipantId,
+    _estimator_factory: FundamentalValueEstimatorFactory,
+) -> SimulationAgent:
+    return MomentumTrader(participant_id=participant_id)
+
+
 AGENT_FACTORIES: dict[
     str, Callable[[ParticipantId, FundamentalValueEstimatorFactory], SimulationAgent]
 ] = {
     "RandomNoise": _make_random_noise_trader,
     "Fundamental": _make_fundamental_trader,
     "MarketMaker": _make_market_maker,
+    "Momentum": _make_momentum_trader,
     "LongTermHolder": _make_long_term_holder,
 }
 
