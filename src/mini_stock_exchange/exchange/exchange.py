@@ -12,6 +12,7 @@ from .models import (
     ParticipantId,
     ParticipantPositionSummary,
     ParticipantSummary,
+    ParticipantValuation,
     PriceTicks,
     Quantity,
     RequestForOrder,
@@ -499,6 +500,52 @@ class Exchange:
                 ).net_worth,
             )
             for participant in self._participants.values()
+        )
+
+    def get_participant_valuations(self) -> tuple[ParticipantValuation, ...]:
+        """Calculate total cash and marked net worth for every participant."""
+        cash_balances = {
+            participant_id: participant.balance
+            for participant_id, participant in self._participants.items()
+        }
+        for order_id, amount in self._reserved_cash.items():
+            participant_id = self._orders[order_id].participant_id
+            cash_balances[participant_id] += amount
+
+        positions: dict[tuple[ParticipantId, Symbol], Quantity] = {}
+        for participant_id, participant in self._participants.items():
+            for symbol, quantity in participant.positions.items():
+                positions[(participant_id, symbol)] = quantity
+        for order_id, quantity in self._reserved_positions.items():
+            order = self._orders[order_id]
+            key = (order.participant_id, order.symbol)
+            positions[key] = positions.get(key, 0) + quantity
+
+        mark_prices = {
+            symbol: self.get_reference_price(symbol) for symbol in self._instruments
+        }
+        market_values: dict[ParticipantId, Cash] = dict.fromkeys(
+            self._participants,
+            0,
+        )
+        for key, quantity in positions.items():
+            participant_id, symbol = key
+            mark_price = mark_prices[symbol]
+            if mark_price is None:
+                market_value = self._position_cost_basis.get(key, 0)
+            else:
+                market_value = quantity * mark_price
+            market_values[participant_id] += market_value
+
+        return tuple(
+            ParticipantValuation(
+                participant_id=participant_id,
+                cash_balance=cash_balances[participant_id],
+                net_worth=(
+                    cash_balances[participant_id] + market_values[participant_id]
+                ),
+            )
+            for participant_id in self._participants
         )
 
     def get_participant_details(
