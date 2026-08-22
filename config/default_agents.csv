@@ -11,5 +11,7 @@ FUNDAMENTAL_1,Fundamental Trader 1,2000000,Fundamental
 FUNDAMENTAL_2,Fundamental Trader 2,2000000,Fundamental
 MARKET_MAKER_1,Market Maker 1,2000000,MarketMaker
 MARKET_MAKER_2,Market Maker 2,2000000,MarketMaker
+MOMENTUM_1,Momentum Trader 1,300000,Momentum
+MOMENTUM_2,Momentum Trader 2,300000,Momentum
 LONG_TERM_HOLDER_1,Long-Term Holder 1,100000,LongTermHolder
 LONG_TERM_HOLDER_2,Long-Term Holder 2,100000,LongTermHolder
