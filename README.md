@@ -1,5 +1,7 @@
 # Mini Stock Exchange
 
+[![CI](https://github.com/wlucas30/mini-stock-exchange/actions/workflows/main.yml/badge.svg)](https://github.com/wlucas30/mini-stock-exchange/actions/workflows/main.yml) ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
+
 This is a Python-based electronic exchange simulator. The exchange contains
 3 default instruments. A limit-order-book matching engine allows prices to
 emerge for each instrument from orders submitted by participants. The engine
